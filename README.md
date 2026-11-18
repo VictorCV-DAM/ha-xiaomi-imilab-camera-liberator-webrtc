@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <em>After years without native local support or RTSP firmware, this integration completely liberates a vast fleet of Xiaomi / Chuangmi / Imilab cameras with <strong>native 2K WebRTC streaming</strong>, <strong>in-card quick video recording</strong>, <strong>100% local UDP PTZ motor control</strong>, and a dedicated tactile Lovelace PTZ card — <strong>zero cloud subscriptions, zero hacking</strong>.</em>
+  <em>After years without native local support or RTSP firmware, this integration completely liberates a vast fleet of Xiaomi / Chuangmi / Imilab cameras with <strong>native 2K WebRTC streaming</strong>, <strong>in-card quick video recording</strong>, <strong>100% local UDP PTZ motor control</strong>, and a dedicated tactile Lovelace PTZ card — <strong>zero cloud subscriptions, zero SD card hacks, zero firmware version restrictions</strong>.</em>
 </p>
 
 > [!IMPORTANT]
@@ -55,6 +55,7 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 
 ## ⚡ Highlights & Key Features
 
+- **🚫 Zero SD Card Hacks & Firmware Lock-In:** Forget about dangerous microSD card flashing hacks, soldering serial/UART pins, or being locked to old, restrictive firmware builds. Operates directly on stock factory firmware with zero bricking risk.
 - **⚡ Direct WebRTC Streaming:** Eliminates cloud-dependent relays. Streams directly via hardware-accelerated `go2rtc` and WebSocket peer negotiation.
 - **🎥 In-Card Video Recording:** Center record button (`RECORD` / `GRABAR`) records live video chunks directly from the browser with an active stopwatch timer (`● RECORDING 00:00`), automatically downloading the MP4/WebM video clip upon completion while triggering the camera's local 30s storage backup.
 - **⚡ Native 2K WebRTC Streaming:** Direct hardware-accelerated H.265/H.264 streaming with zero transcoding overhead.
@@ -132,6 +133,7 @@ title: Front Entrance (2K PTZ)
 ### Card Features:
 | Feature | Description |
 | :--- | :--- |
+| **No SD Hacks Needed** | Works out-of-the-box on stock firmware with zero bricking risk |
 | **WebRTC 2K Live** | Direct frame playback via go2rtc |
 | **Native 2K WebRTC** | Direct hardware streaming with zero transcoding overhead |
 | **PTZ D-Pad** | Motor commands with hardware debouncing to prevent packet collisions |

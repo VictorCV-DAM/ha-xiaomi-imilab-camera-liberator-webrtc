@@ -53,6 +53,21 @@ async def async_ensure_patched_go2rtc(hass: HomeAssistant) -> Optional[str]:
 
     binary_path = os.path.join(bin_dir, target_name)
 
+    # 0. Check for verified custom stable 2K binary in config root (>25MB contains custom 2K decoder)
+    for candidate in [
+        hass.config.path("go2rtc-1.9.15.CUSTOM_STABLE_IMILAB_2K"),
+        hass.config.path("go2rtc-custom"),
+        hass.config.path("go2rtc-new"),
+    ]:
+        if os.path.isfile(candidate) and os.path.getsize(candidate) > 25000000:
+            try:
+                st = os.stat(candidate)
+                os.chmod(candidate, st.st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+                _LOGGER.info("Using verified custom stable 2K go2rtc binary from %s (%d bytes)", candidate, os.path.getsize(candidate))
+                return candidate
+            except Exception as e:
+                _LOGGER.debug("Could not verify candidate %s: %s", candidate, e)
+
     # 1. Check if private binary already exists and is executable
     if os.path.isfile(binary_path):
         try:

@@ -113,10 +113,7 @@ def generate_chuangmi_config(
 
     cfg = {
         "api": {"listen": f":{api_port}"},
-        "rtsp": {
-            "listen": f":{rtsp_port}",
-            "default_query": "transport=tcp",
-        },
+        "rtsp": {"listen": f":{rtsp_port}"},
         "webrtc": {"listen": f":{webrtc_port}"},
         "log": {"level": log_level},
         "streams": streams,
@@ -199,16 +196,17 @@ async def async_bridge_to_primary_go2rtc(
             continue
         for suffix in ["", "_sd"]:
             stream_name = f"chuangmi_{did}{suffix}"
-            source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}#transport=tcp"
+            source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}"
             payload = {
                 "name": stream_name,
                 "src": [
-                    source_url
+                    source_url,
+                    f"ffmpeg:{source_url}#video=h264#audio=opus"
                 ]
             }
             try:
                 async with session.put(f"{primary_url}/api/streams", json=payload, timeout=2) as resp:
                     if resp.status in (200, 201):
-                        _LOGGER.debug("Bridged %s to primary go2rtc (%s) via lossless TCP", stream_name, primary_url)
+                        _LOGGER.debug("Bridged %s to primary go2rtc (%s) with H264 fallback", stream_name, primary_url)
             except Exception:
                 pass

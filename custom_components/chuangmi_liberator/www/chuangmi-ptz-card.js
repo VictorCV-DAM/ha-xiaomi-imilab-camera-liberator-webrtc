@@ -682,60 +682,24 @@ class ChuangmiPTZCard extends HTMLElement {
     const i18n = getCardI18n(this._hass);
     this._showOverlay(i18n.connecting, true, false);
 
-    const webrtc = container.querySelector('webrtc-camera');
-    if (webrtc) {
-      // 1. Immediately terminate active WebRTC and WebSocket session to release the camera encoder
+    const oldWebrtc = container.querySelector('webrtc-camera');
+    if (oldWebrtc) {
       try {
-        if (typeof webrtc.ondisconnect === 'function') {
-          webrtc.ondisconnect();
-        }
-        if (webrtc.disconnectTID) {
-          clearTimeout(webrtc.disconnectTID);
-          webrtc.disconnectTID = 0;
-        }
-        if (webrtc.reconnectTID) {
-          clearTimeout(webrtc.reconnectTID);
-          webrtc.reconnectTID = 0;
-        }
-        if (webrtc.ws) {
-          try { webrtc.ws.close(); } catch (_) {}
-          webrtc.ws = null;
-        }
-        if (webrtc.pc) {
-          try { webrtc.pc.close(); } catch (_) {}
-          webrtc.pc = null;
-        }
-      } catch (err) {
-        console.debug('Disconnect error:', err);
-      }
+        if (typeof oldWebrtc.ondisconnect === 'function') oldWebrtc.ondisconnect();
+        if (oldWebrtc.disconnectTID) clearTimeout(oldWebrtc.disconnectTID);
+        if (oldWebrtc.reconnectTID) clearTimeout(oldWebrtc.reconnectTID);
+        if (oldWebrtc.ws) oldWebrtc.ws.close();
+        if (oldWebrtc.pc) oldWebrtc.pc.close();
+      } catch (_) {}
+      try { oldWebrtc.remove(); } catch (_) {}
+    }
 
-      // 2. Pause 200ms to allow camera UDP socket to close gracefully, then connect new stream
-      setTimeout(() => {
-        try {
-          if (webrtc.config) {
-            webrtc.config.url = streamName;
-            webrtc.config.mode = 'webrtc';
-            webrtc.config.muted = true;
-          } else {
-            webrtc.setConfig({ url: streamName, muted: true, mode: 'webrtc' });
-          }
-          if (this._hass) webrtc.hass = this._hass;
-          if (typeof webrtc.onconnect === 'function') {
-            webrtc.onconnect();
-          }
-        } catch (e) {
-          this._ensureWebRTC(true);
-        }
-        setTimeout(() => {
-          this._isQualitySwitching = false;
-        }, 400);
-      }, 200);
-    } else {
+    setTimeout(() => {
       this._ensureWebRTC(true);
       setTimeout(() => {
         this._isQualitySwitching = false;
       }, 400);
-    }
+    }, 150);
   }
 
   _updateQualityBadge() {
@@ -780,12 +744,7 @@ class ChuangmiPTZCard extends HTMLElement {
       if (!video || video._hasStatusHandlers) return;
       video._hasStatusHandlers = true;
 
-      let bufferTimer = null;
       const onFrameReady = () => {
-        if (bufferTimer) {
-          clearTimeout(bufferTimer);
-          bufferTimer = null;
-        }
         this._hideOverlay();
       };
 
@@ -795,20 +754,7 @@ class ChuangmiPTZCard extends HTMLElement {
         if (video.currentTime > 0) onFrameReady();
       });
 
-      // Debounce buffering overlay: only show if stalled for > 1500ms
-      const handleBuffering = () => {
-        if (!bufferTimer) {
-          bufferTimer = setTimeout(() => {
-            this._showOverlay(i18n.buffering, true, false);
-          }, 1500);
-        }
-      };
-
-      video.addEventListener('waiting', handleBuffering);
-      video.addEventListener('stalled', handleBuffering);
-
       video.addEventListener('error', () => {
-        if (bufferTimer) clearTimeout(bufferTimer);
         this._showOverlay(i18n.stream_error, false, true);
       });
     };
@@ -912,8 +858,7 @@ class ChuangmiPTZCard extends HTMLElement {
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
-        muted: true,
-        mode: 'webrtc'
+        muted: true
       });
       if (this._hass) {
         webrtc.hass = this._hass;
@@ -966,8 +911,14 @@ class ChuangmiPTZCard extends HTMLElement {
       <style>
         :host {
           display: block;
+          position: relative;
+          z-index: 1;
+          isolation: isolate;
         }
         ha-card {
+          position: relative;
+          z-index: 1;
+          isolation: isolate;
           overflow: hidden;
           background: #101216;
           border-radius: 18px;
@@ -1105,7 +1056,7 @@ class ChuangmiPTZCard extends HTMLElement {
           align-items: center;
           justify-content: center;
           gap: 14px;
-          z-index: 8;
+          z-index: 5;
           transition: opacity 0.35s ease, visibility 0.35s ease;
           padding: 20px;
           text-align: center;
@@ -1170,7 +1121,7 @@ class ChuangmiPTZCard extends HTMLElement {
           position: absolute;
           bottom: 12px;
           right: 12px;
-          z-index: 6;
+          z-index: 4;
           background: rgba(16, 18, 22, 0.78);
           backdrop-filter: blur(8px);
           border: 1px solid rgba(255, 255, 255, 0.15);
@@ -1822,7 +1773,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.7.3 ULTRA-FAST STREAM STABILITY & ANTI-HANG ',
+  '%c CHUANGMI-PTZ-CARD %c v1.7.4 INSTANT WEBRTC & LOVELACE HEADER SCROLL FIX ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

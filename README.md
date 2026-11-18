@@ -3,7 +3,7 @@
 </p>
 
 <div align="center">
-  <h1>Chuangmi Liberator WebRTC for Home Assistant</h1>
+  <h1>Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)</h1>
 
   [![HACS](https://img.shields.io/badge/HACS-Custom%20Integration-41BDF5.svg)](https://github.com/hacs/default)
   [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1.0%20%E2%80%94%202026.9.4%2B-41BDF5.svg?logo=home-assistant)](https://www.home-assistant.io/)
@@ -123,7 +123,7 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=VictorCV-DAM&repository=ha-chuangmi-liberator-webrtc&category=integration)
 
 ### ⚡ 1-Click Fast Install
-Click the badge above to open **Chuangmi Liberator WebRTC** directly inside your Home Assistant HACS store, then click **Download**.
+Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** directly inside your Home Assistant HACS store, then click **Download**.
 
 ### 🛠️ Manual Custom Repository Setup
 1. Open **HACS** in your Home Assistant sidebar.
@@ -131,7 +131,7 @@ Click the badge above to open **Chuangmi Liberator WebRTC** directly inside your
 3. Paste the repository URL:  
    `https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc`
 4. Set category to **Integration** and click **Add**.
-5. Find **Chuangmi Liberator WebRTC** in the list and click **Download**.
+5. Find **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** in the list and click **Download**.
 6. Restart Home Assistant (*Settings > System > Restart*).
 
 ---

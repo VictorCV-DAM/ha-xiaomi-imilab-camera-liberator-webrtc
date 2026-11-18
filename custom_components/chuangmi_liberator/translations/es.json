@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Chuangmi Liberator WebRTC",
+        "title": "Xiaomi & Imilab Camera Liberator WebRTC",
         "description": "Introduce tus credenciales de Xiaomi Cloud para descubrir automáticamente tus cámaras, o déjalas en blanco y pulsa Enviar para usar **Detección Local Automática**.",
         "data": {
           "username": "Email o ID de Usuario Xiaomi (Opcional)",

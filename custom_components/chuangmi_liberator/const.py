@@ -1,7 +1,7 @@
-"""Constants for Chuangmi Liberator WebRTC."""
+"""Constants for Xiaomi & Imilab Camera Liberator WebRTC."""
 
 DOMAIN = "chuangmi_liberator"
-NAME = "Chuangmi Liberator WebRTC"
+NAME = "Xiaomi & Imilab Camera Liberator WebRTC"
 
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"

@@ -1,6 +1,6 @@
 {
   "domain": "chuangmi_liberator",
-  "name": "Chuangmi Liberator WebRTC",
+  "name": "Xiaomi & Imilab Camera Liberator WebRTC",
   "codeowners": ["@VictorCV-DAM"],
   "config_flow": true,
   "dependencies": ["http"],

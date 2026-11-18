@@ -18,8 +18,13 @@
 </div>
 
 <p align="center">
-  <strong>Liberate your Xiaomi / Chuangmi / Imilab cameras in Home Assistant.</strong><br>
-  Ultra-low latency <strong>2K & 1080p WebRTC live streaming (&lt;200ms)</strong>, <strong>Instant Quick Video Recording</strong>, local UDP PTZ motor control, and a dedicated tactile Lovelace PTZ card without cloud subscriptions or throttling.
+  <strong>🔓 The Ultimate Liberation for Xiaomi, Chuangmi & Imilab Cameras in Home Assistant</strong><br>
+  <strong>Brings Full Local Control & Ultra-Low Latency 2K WebRTC to Long-Unsupported Hardware:</strong><br>
+  <strong>Xiaomi Smart Camera 2K / Imilab A1</strong> (<code>ipc019e</code> / <code>ipc019</code>) • <strong>Mijia 360° PTZ 1080P</strong> (<code>ipc009</code> / <code>xiaobai</code>) • <strong>Xiaomi C200 / C300 / C400 / C500 Pro</strong> (<code>026c02</code>, <code>046c04</code>, <code>055a01</code>, <code>069a01</code>) • <strong>Chuangmi IP v2–v6 / PTZ Pro</strong> (<code>ipc013</code>, <code>ipc020</code>–<code>022</code>) • <strong>Imilab C20 / C21 / C30</strong>
+</p>
+
+<p align="center">
+  <em>After years without native local support or RTSP firmware, this integration completely liberates a vast fleet of Xiaomi / Chuangmi / Imilab cameras with <strong>instant &lt;200ms 2K WebRTC streaming</strong>, <strong>in-card quick video recording</strong>, <strong>100% local UDP PTZ motor control</strong>, and a dedicated tactile Lovelace PTZ card — <strong>zero cloud subscriptions, zero hacking, zero cloud lag</strong>.</em>
 </p>
 
 ---

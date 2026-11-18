@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.2)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.4)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -477,9 +477,10 @@ class ChuangmiPTZCard extends HTMLElement {
           color: #10b981;
           transform: scale(1.15);
         }
-        .dpad-btn:active {
+        .dpad-btn:active, .dpad-btn.pressed {
           transform: scale(0.95);
           color: #34d399;
+          background: rgba(16, 185, 129, 0.25);
         }
         .btn-up    { top: 6px;  left: 50%; transform: translateX(-50%); width: 44px; height: 38px; }
         .btn-down  { bottom: 6px; left: 50%; transform: translateX(-50%); width: 44px; height: 38px; }
@@ -667,11 +668,40 @@ class ChuangmiPTZCard extends HTMLElement {
       `;
     }
 
-    // Event listeners for PTZ
-    this.shadowRoot.getElementById('btnUp').onclick = () => this._callButton(this._discoveredEntities.ptz_up);
-    this.shadowRoot.getElementById('btnDown').onclick = () => this._callButton(this._discoveredEntities.ptz_down);
-    this.shadowRoot.getElementById('btnLeft').onclick = () => this._callButton(this._discoveredEntities.ptz_left);
-    this.shadowRoot.getElementById('btnRight').onclick = () => this._callButton(this._discoveredEntities.ptz_right);
+    // Event listeners for PTZ (intelligently accounts for 180° inverted ceiling mount)
+    const getDirButton = (dir) => {
+      const flipState = this._hass && this._discoveredEntities.flip ? this._hass.states[this._discoveredEntities.flip]?.state : 'off';
+      const isFlipped = flipState === 'on';
+
+      if (isFlipped) {
+        if (dir === 'up') return this._discoveredEntities.ptz_down;
+        if (dir === 'down') return this._discoveredEntities.ptz_up;
+        if (dir === 'left') return this._discoveredEntities.ptz_right;
+        if (dir === 'right') return this._discoveredEntities.ptz_left;
+      }
+      if (dir === 'up') return this._discoveredEntities.ptz_up;
+      if (dir === 'down') return this._discoveredEntities.ptz_down;
+      if (dir === 'left') return this._discoveredEntities.ptz_left;
+      if (dir === 'right') return this._discoveredEntities.ptz_right;
+      return null;
+    };
+
+    const triggerPtz = (btnId, dir) => {
+      const btn = this.shadowRoot.getElementById(btnId);
+      if (btn) {
+        btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 200);
+      }
+      const targetBtn = getDirButton(dir);
+      if (targetBtn) {
+        this._callButton(targetBtn);
+      }
+    };
+
+    this.shadowRoot.getElementById('btnUp').onclick = () => triggerPtz('btnUp', 'up');
+    this.shadowRoot.getElementById('btnDown').onclick = () => triggerPtz('btnDown', 'down');
+    this.shadowRoot.getElementById('btnLeft').onclick = () => triggerPtz('btnLeft', 'left');
+    this.shadowRoot.getElementById('btnRight').onclick = () => triggerPtz('btnRight', 'right');
 
     // Center button: Microphone intercom
     this.shadowRoot.getElementById('btnCenter').onclick = () => this._toggleMicrophone();
@@ -920,7 +950,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.3 USER-ASSIGNED-TITLES & DIRECT-WEBRTC ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.4 USER-ASSIGNED-TITLES & DIRECT-WEBRTC ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

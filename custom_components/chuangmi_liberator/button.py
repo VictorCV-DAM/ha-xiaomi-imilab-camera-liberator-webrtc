@@ -167,10 +167,6 @@ class ChuangmiPTZButton(ButtonEntity):
     async def async_press(self) -> None:
         """Handle PTZ movement command with serialized locking to prevent packet collisions."""
         lock = _get_ptz_lock(self._ip)
-        if lock.locked():
-            _LOGGER.debug("PTZ command %s ignored because motor is currently in motion", self._dir_key)
-            return
-
         _LOGGER.debug("Sending PTZ command %s (op=%d) to %s...", self._dir_key, self._op_code, self._ip)
         async with lock:
             try:
@@ -181,8 +177,8 @@ class ChuangmiPTZButton(ButtonEntity):
                     "set_motor",
                     {"operation": self._op_code}
                 )
-                _LOGGER.debug("PTZ %s response: %s", self._dir_key, res)
-                # Cooldown to allow physical gear to complete step
-                await asyncio.sleep(0.08)
+                _LOGGER.debug("PTZ %s response from %s: %s", self._dir_key, self._ip, res)
+                # Brief pause so rapid repeated presses don't flood UDP socket
+                await asyncio.sleep(0.04)
             except Exception as err:
-                _LOGGER.error("Error sending PTZ command to camera: %s", err)
+                _LOGGER.error("Error sending PTZ command to camera %s: %s", self._ip, err)

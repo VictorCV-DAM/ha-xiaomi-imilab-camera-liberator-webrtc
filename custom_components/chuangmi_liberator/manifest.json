@@ -1,6 +1,6 @@
 {
   "domain": "chuangmi_liberator",
-  "name": "Xiaomi & Imilab Camera Liberator WebRTC",
+  "name": "Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)",
   "codeowners": ["@VictorCV-DAM"],
   "config_flow": true,
   "dependencies": ["http"],

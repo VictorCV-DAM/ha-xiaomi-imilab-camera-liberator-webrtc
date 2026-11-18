@@ -1,4 +1,4 @@
-"""Camera platform for Chuangmi Liberator WebRTC."""
+"""Camera platform for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import asyncio
 import logging
 import os
@@ -219,7 +219,7 @@ class ChuangmiLiberatorCamera(Camera):
             "did": self._did,
             "model": self._model,
             "stream_name": f"chuangmi_{self._did}",
-            "brand": "Chuangmi Liberator WebRTC",
+            "brand": "Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)",
         }
 
     @property
@@ -227,7 +227,7 @@ class ChuangmiLiberatorCamera(Camera):
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=self._device_name,
-            manufacturer="Chuangmi / Xiaomi",
+            manufacturer="Xiaomi / Imilab / Chuangmi",
             model=self._model,
             sw_version="CloudRTC v1.0",
         )

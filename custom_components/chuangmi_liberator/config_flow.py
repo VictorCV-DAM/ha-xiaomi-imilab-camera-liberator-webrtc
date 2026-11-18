@@ -1,4 +1,4 @@
-"""Config flow for Chuangmi Liberator WebRTC."""
+"""Config flow for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import json
 import logging
 import os
@@ -268,7 +268,7 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class ChuangmiLiberatorOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Chuangmi Liberator WebRTC."""
+    """Handle options flow for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         super().__init__()

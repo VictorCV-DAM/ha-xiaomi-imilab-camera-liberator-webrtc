@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/icon_512.png" width="150" height="150" alt="Chuangmi Liberator WebRTC Icon" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+  <img src="images/icon_512.png" width="150" height="150" alt="Xiaomi & Imilab Camera Liberator (WebRTC & PTZ) Icon" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
 </p>
 
 <div align="center">

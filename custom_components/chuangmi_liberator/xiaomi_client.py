@@ -1,4 +1,4 @@
-"""Xiaomi Cloud & miIO communication client for Chuangmi Liberator WebRTC."""
+"""Xiaomi Cloud & miIO communication client for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import asyncio
 import hashlib
 import json

@@ -1,4 +1,4 @@
-"""Switch platform for Chuangmi Liberator WebRTC."""
+"""Switch platform for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import logging
 from typing import Any
 from homeassistant.components.switch import SwitchEntity
@@ -97,7 +97,7 @@ class ChuangmiSwitch(SwitchEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=self._device_name,
-            manufacturer="Chuangmi / Xiaomi",
+            manufacturer="Xiaomi / Imilab / Chuangmi",
             model=self._model,
         )
 

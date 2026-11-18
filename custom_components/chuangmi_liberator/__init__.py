@@ -1,4 +1,4 @@
-"""Chuangmi Liberator WebRTC Integration."""
+"""Xiaomi & Imilab Camera Liberator (WebRTC & PTZ) Integration."""
 import logging
 import os
 import json
@@ -192,7 +192,7 @@ async def _async_discover_all_cameras(hass: HomeAssistant, client: XiaomiClient,
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Chuangmi Liberator WebRTC from a config entry."""
+    """Set up Xiaomi & Imilab Camera Liberator (WebRTC & PTZ) from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
     # Automatically ensure the patched go2rtc binary is deployed in private bin

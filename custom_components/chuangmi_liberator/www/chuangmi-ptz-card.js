@@ -362,6 +362,8 @@ class ChuangmiPTZCard extends HTMLElement {
         if (eid.startsWith('camera.')) {
           const attrs = state.attributes || {};
           if (
+            (attrs.brand && attrs.brand.includes('Liberator')) ||
+            attrs.brand === 'Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)' ||
             attrs.brand === 'Chuangmi Liberator WebRTC' ||
             (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
             attrs.did ||
@@ -1549,6 +1551,8 @@ class ChuangmiPTZCardEditor extends HTMLElement {
       if (eid.startsWith('camera.')) {
         const attrs = state.attributes || {};
         const isChuangmi = (
+          (attrs.brand && attrs.brand.includes('Liberator')) ||
+          attrs.brand === 'Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)' ||
           attrs.brand === 'Chuangmi Liberator WebRTC' ||
           (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
           attrs.did ||

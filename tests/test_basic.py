@@ -1,4 +1,4 @@
-"""Basic unit test suite for Chuangmi Liberator WebRTC."""
+"""Basic unit test suite for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import sys
 import unittest
 from unittest.mock import MagicMock
@@ -37,7 +37,7 @@ from custom_components.chuangmi_liberator.binary_manager import ARCH_MAP
 class TestChuangmiLiberatorBasics(unittest.TestCase):
     def test_constants(self):
         self.assertEqual(DOMAIN, "chuangmi_liberator")
-        self.assertEqual(NAME, "Xiaomi & Imilab Camera Liberator WebRTC")
+        self.assertEqual(NAME, "Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)")
         self.assertIn("de", SERVER_COUNTRIES)
         self.assertEqual(DEFAULT_COUNTRY, "de")
 

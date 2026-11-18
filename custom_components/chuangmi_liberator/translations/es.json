@@ -48,7 +48,7 @@
       "required": "Este campo es obligatorio."
     },
     "abort": {
-      "already_configured": "Esta cámara ya está configurada en Chuangmi Liberator."
+      "already_configured": "Esta cámara ya está configurada en Xiaomi & Imilab Camera Liberator."
     }
   },
   "options": {

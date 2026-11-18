@@ -1,4 +1,4 @@
-"""Select platform for Chuangmi Liberator WebRTC."""
+"""Select platform for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import logging
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -80,7 +80,7 @@ class ChuangmiNightModeSelect(SelectEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=self._device_name,
-            manufacturer="Chuangmi / Xiaomi",
+            manufacturer="Xiaomi / Imilab / Chuangmi",
             model=self._model,
         )
 

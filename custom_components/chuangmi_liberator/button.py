@@ -1,4 +1,4 @@
-"""Button platform for Chuangmi Liberator WebRTC."""
+"""Button platform for Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)."""
 import asyncio
 import logging
 from homeassistant.components.button import ButtonEntity, ButtonDeviceClass
@@ -107,7 +107,7 @@ class ChuangmiRestartButton(ButtonEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=self._device_name,
-            manufacturer="Chuangmi / Xiaomi",
+            manufacturer="Xiaomi / Imilab / Chuangmi",
             model=self._model,
         )
 
@@ -163,7 +163,7 @@ class ChuangmiPTZButton(ButtonEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=self._device_name,
-            manufacturer="Chuangmi / Xiaomi",
+            manufacturer="Xiaomi / Imilab / Chuangmi",
             model=self._model,
         )
 
@@ -218,7 +218,7 @@ class ChuangmiRecordButton(ButtonEntity):
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
             name=self._device_name,
-            manufacturer="Chuangmi / Xiaomi",
+            manufacturer="Xiaomi / Imilab / Chuangmi",
             model=self._model,
         )
 

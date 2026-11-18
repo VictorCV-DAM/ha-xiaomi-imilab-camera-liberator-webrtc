@@ -280,14 +280,16 @@ class ChuangmiLiberatorCamera(Camera):
         session = async_get_clientsession(self.hass)
         auth = self._go2rtc_auth
         url = f"{GO2RTC_API_URL}/api/webrtc?src={stream_name}"
+        headers = {"Content-Type": "application/sdp"}
         try:
             async with session.post(
                 url,
-                data={"sdp": offer_sdp},
+                data=offer_sdp,
+                headers=headers,
                 auth=auth,
-                timeout=5
+                timeout=10
             ) as resp:
-                if resp.status == 200:
+                if resp.status in (200, 201):
                     answer_data = await resp.text()
                     if WebRTCAnswer is not None:
                         try:
@@ -295,13 +297,22 @@ class ChuangmiLiberatorCamera(Camera):
                         except TypeError:
                             send_message(WebRTCAnswer(answer_data))
                     return
-                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s", resp.status)
+                body = await resp.text()
+                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s: %s", resp.status, body)
                 if WebRTCError is not None:
-                    send_message(WebRTCError("go2rtc_error", f"HTTP {resp.status}"))
+                    send_message(WebRTCError("go2rtc_error", f"HTTP {resp.status}: {body}"))
         except Exception as e:
             _LOGGER.error("Error exchanging WebRTC offer for %s: %s", stream_name, e)
             if WebRTCError is not None:
                 send_message(WebRTCError("webrtc_failed", str(e)))
+
+    async def async_on_webrtc_candidate(self, session_id: str, candidate=None, **kwargs) -> None:
+        """Handle incoming ICE candidate from client."""
+        pass
+
+    def close_webrtc_session(self, session_id: str) -> None:
+        """Close active WebRTC session."""
+        pass
 
     async def async_handle_web_rtc_offer(self, offer_sdp: str) -> Optional[str]:
         """Backward compatibility for synchronous WebRTC offer handling."""
@@ -309,16 +320,19 @@ class ChuangmiLiberatorCamera(Camera):
         session = async_get_clientsession(self.hass)
         auth = self._go2rtc_auth
         url = f"{GO2RTC_API_URL}/api/webrtc?src={stream_name}"
+        headers = {"Content-Type": "application/sdp"}
         try:
             async with session.post(
                 url,
-                data={"sdp": offer_sdp},
+                data=offer_sdp,
+                headers=headers,
                 auth=auth,
-                timeout=5
+                timeout=10
             ) as resp:
-                if resp.status == 200:
+                if resp.status in (200, 201):
                     return await resp.text()
-                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s", resp.status)
+                body = await resp.text()
+                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s: %s", resp.status, body)
         except Exception as e:
             _LOGGER.error("Error exchanging WebRTC offer for %s: %s", stream_name, e)
         return None

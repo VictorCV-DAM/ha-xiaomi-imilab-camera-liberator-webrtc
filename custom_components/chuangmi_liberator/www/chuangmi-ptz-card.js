@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.5)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.6)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -161,7 +161,6 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const hadHass = !!this._hass;
     this._hass = hass;
     this._updateEntities();
 
@@ -169,20 +168,7 @@ class ChuangmiPTZCard extends HTMLElement {
       this._render();
     } else {
       this._updateStates();
-      // Ensure webrtc-camera element receives hass
-      const webrtc = this.shadowRoot.querySelector('webrtc-camera');
-      if (webrtc) {
-        if (!hadHass) {
-          const streamName = this._resolveStreamName(this._config.camera_entity);
-          if (streamName) {
-            try {
-              webrtc.setConfig({ url: streamName, mode: 'webrtc', muted: true });
-              webrtc.muted = true;
-            } catch (e) {}
-          }
-        }
-        webrtc.hass = hass;
-      }
+      this._ensureWebRTC();
     }
   }
 
@@ -254,6 +240,7 @@ class ChuangmiPTZCard extends HTMLElement {
     const isEntrada = did === '369136473' || camEntity.toLowerCase().includes('entrada');
     const isPortable = did === '369135587' || camEntity.toLowerCase().includes('portable');
     const key = isEntrada ? 'entrada' : (isPortable ? 'portable' : '');
+    const mac = isEntrada ? 'ebc2' : (isPortable ? 'e84c' : '');
 
     const found = {
       ptz_up: '',
@@ -274,6 +261,7 @@ class ChuangmiPTZCard extends HTMLElement {
 
       const matchesCamera = (
         (did && (entityDid === did || eidLower.includes(did))) ||
+        (mac && eidLower.includes(mac)) ||
         (key && (eidLower.includes(key) || fnLower.includes(key)))
       );
 
@@ -285,11 +273,27 @@ class ChuangmiPTZCard extends HTMLElement {
         else if (eidLower.includes('left') || eidLower.includes('izquierda') || fnLower.includes('left')) found.ptz_left = eid;
         else if (eidLower.includes('right') || eidLower.includes('derecha') || fnLower.includes('right')) found.ptz_right = eid;
         else if (eidLower.includes('record') || eidLower.includes('grabar')) found.record_clip = eid;
+      } else if (eid.startsWith('number.')) {
+        // Prioritize physical camera hardware image_rollover number entity (0 or 180)
+        if (eidLower.includes('rollover') || eidLower.includes('flip')) {
+          found.flip = eid;
+        }
       } else if (eid.startsWith('switch.')) {
-        if (eidLower.includes('flip') || eidLower.includes('voltear') || fnLower.includes('flip')) found.flip = eid;
-        else if (eidLower.includes('power') || eidLower.includes('reposo') || eidLower.includes('sleep') || fnLower.includes('power') || fnLower.includes('sleep')) found.sleep = eid;
+        if ((eidLower.includes('flip') || eidLower.includes('voltear')) && !found.flip) {
+          found.flip = eid;
+        } else if (eidLower.includes('switch_status')) {
+          // Prioritize real hardware camera control switch_status (on/off)
+          found.sleep = eid;
+        } else if ((eidLower.includes('power') || eidLower.includes('reposo') || eidLower.includes('sleep')) && !found.sleep) {
+          found.sleep = eid;
+        }
       } else if (eid.startsWith('select.')) {
-        if (eidLower.includes('night') || eidLower.includes('nocturna') || fnLower.includes('night')) found.night = eid;
+        if (eidLower.includes('night_shot')) {
+          // Prioritize real hardware camera night_shot ('Auto', 'Off', 'On')
+          found.night = eid;
+        } else if ((eidLower.includes('night') || eidLower.includes('nocturna')) && !found.night) {
+          found.night = eid;
+        }
       }
     }
 
@@ -301,17 +305,48 @@ class ChuangmiPTZCard extends HTMLElement {
     this._hass.callService('button', 'press', { entity_id: entityId });
   }
 
-  _callSwitch(entityId) {
+  _callFlip(entityId) {
     if (!this._hass || !entityId) return;
-    this._hass.callService('switch', 'toggle', { entity_id: entityId });
+    if (entityId.startsWith('number.')) {
+      const current = parseFloat(this._hass.states[entityId]?.state || '0');
+      const target = current >= 90 ? 0 : 180;
+      this._hass.callService('number', 'set_value', { entity_id: entityId, value: target });
+    } else {
+      this._hass.callService('switch', 'toggle', { entity_id: entityId });
+    }
   }
 
   _cycleNightMode(entityId) {
     if (!this._hass || !entityId) return;
-    const current = this._hass.states[entityId]?.state || 'auto';
-    const cycle = { 'auto': 'always_on', 'always_on': 'off', 'off': 'auto' };
+    const stateObj = this._hass.states[entityId];
+    const current = (stateObj?.state || 'off').toLowerCase();
+    const options = stateObj?.attributes?.options || [];
+
+    if (options.length > 0) {
+      // Find matching option with case sensitivity preservation
+      const isCurrentlyOn = current === 'on' || current === 'always_on' || current === '2';
+      let nextOption = '';
+      if (isCurrentlyOn) {
+        // Toggle OFF
+        nextOption = options.find(o => o.toLowerCase() === 'off') || options.find(o => o.toLowerCase() === 'auto') || options[0];
+      } else {
+        // Toggle ON
+        nextOption = options.find(o => o.toLowerCase() === 'on' || o.toLowerCase() === 'always_on') || options[options.length - 1];
+      }
+      if (nextOption) {
+        this._hass.callService('select', 'select_option', { entity_id: entityId, option: nextOption });
+        return;
+      }
+    }
+
+    const cycle = { 'auto': 'always_on', 'always_on': 'off', 'off': 'auto', 'on': 'off' };
     const next = cycle[current] || 'auto';
     this._hass.callService('select', 'select_option', { entity_id: entityId, option: next });
+  }
+
+  _callSleep(entityId) {
+    if (!this._hass || !entityId) return;
+    this._hass.callService('switch', 'toggle', { entity_id: entityId });
   }
 
   async _toggleRecording() {
@@ -423,6 +458,57 @@ class ChuangmiPTZCard extends HTMLElement {
           this._mediaRecorder = null;
         }
       }
+    }
+  }
+
+  _ensureWebRTC() {
+    const container = this.shadowRoot.getElementById('videoContainer');
+    if (!container) return;
+
+    const streamName = this._resolveStreamName(this._config?.camera_entity);
+    if (!streamName) {
+      const isEs = (this._hass?.language || 'en').startsWith('es');
+      container.innerHTML = `
+        <div style="color: #71717a; font-size: 13px; text-align: center; padding: 24px;">
+          <svg style="width:36px;height:36px;opacity:0.4;display:block;margin:0 auto 8px;" viewBox="0 0 24 24"><path fill="currentColor" d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/></svg>
+          ${isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor'}
+        </div>
+      `;
+      return;
+    }
+
+    if (!customElements.get('webrtc-camera')) {
+      customElements.whenDefined('webrtc-camera').then(() => {
+        this._ensureWebRTC();
+      });
+      return;
+    }
+
+    let webrtc = container.querySelector('webrtc-camera');
+    if (!webrtc) {
+      container.innerHTML = '';
+      webrtc = document.createElement('webrtc-camera');
+      webrtc.setConfig({
+        url: streamName,
+        muted: true
+      });
+      if (this._hass) {
+        webrtc.hass = this._hass;
+      }
+      container.appendChild(webrtc);
+    } else {
+      if (this._hass && webrtc.hass !== this._hass) {
+        webrtc.hass = this._hass;
+      }
+    }
+
+    // Ensure connection starts even if hass arrived after connectedCallback
+    if (this._hass && webrtc && !webrtc.ws && !webrtc.pc) {
+      try {
+        if (typeof webrtc.onconnect === 'function') {
+          webrtc.onconnect();
+        }
+      } catch (e) {}
     }
   }
 
@@ -698,51 +784,12 @@ class ChuangmiPTZCard extends HTMLElement {
       </ha-card>
     `;
 
-    // Embed WebRTC element - strictly passing url without entity to force direct go2rtc WebRTC routing
-    const container = this.shadowRoot.getElementById('videoContainer');
-    container.innerHTML = '';
-    if (streamName && customElements.get('webrtc-camera')) {
-      try {
-        const webrtc = document.createElement('webrtc-camera');
-        webrtc.setConfig({
-          url: streamName,
-          mode: 'webrtc',
-          muted: true
-        });
-        webrtc.muted = true;
-        if (this._hass) {
-          webrtc.hass = this._hass;
-        }
-        container.appendChild(webrtc);
-
-        // Ensure video stream is completely muted by default
-        const enforceMute = () => {
-          const v = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video') || webrtc.video;
-          if (v) {
-            v.muted = true;
-            v.defaultMuted = true;
-          }
-        };
-        enforceMute();
-        setTimeout(enforceMute, 300);
-        setTimeout(enforceMute, 1200);
-        setTimeout(enforceMute, 2500);
-      } catch (err) {
-        console.warn('Could not initialize webrtc-camera in card:', err);
-      }
-    } else if (!streamName) {
-      container.innerHTML = `
-        <div style="color: #71717a; font-size: 13px; text-align: center; padding: 24px;">
-          <svg style="width:36px;height:36px;opacity:0.4;display:block;margin:0 auto 8px;" viewBox="0 0 24 24"><path fill="currentColor" d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/></svg>
-          ${isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor'}
-        </div>
-      `;
-    }
+    this._ensureWebRTC();
 
     // Event listeners for PTZ (intelligently accounts for 180° inverted ceiling mount)
     const getDirButton = (dir) => {
-      const flipState = this._hass && this._discoveredEntities.flip ? this._hass.states[this._discoveredEntities.flip]?.state : 'off';
-      const isFlipped = flipState === 'on';
+      const flipState = this._hass && this._discoveredEntities.flip ? String(this._hass.states[this._discoveredEntities.flip]?.state || '') : 'off';
+      const isFlipped = (flipState === 'on' || flipState === '180');
 
       if (isFlipped) {
         if (dir === 'up') return this._discoveredEntities.ptz_down;
@@ -778,9 +825,9 @@ class ChuangmiPTZCard extends HTMLElement {
     this.shadowRoot.getElementById('btnCenter').onclick = () => this._toggleRecording();
 
     // 3 Action buttons
-    this.shadowRoot.getElementById('btnFlip').onclick = () => this._callSwitch(this._discoveredEntities.flip);
+    this.shadowRoot.getElementById('btnFlip').onclick = () => this._callFlip(this._discoveredEntities.flip);
     this.shadowRoot.getElementById('btnNight').onclick = () => this._cycleNightMode(this._discoveredEntities.night);
-    this.shadowRoot.getElementById('btnSleep').onclick = () => this._callSwitch(this._discoveredEntities.sleep);
+    this.shadowRoot.getElementById('btnSleep').onclick = () => this._callSleep(this._discoveredEntities.sleep);
 
     this._rendered = true;
     this._updateStates();
@@ -802,30 +849,30 @@ class ChuangmiPTZCard extends HTMLElement {
     // 1. Flip button state: VERDE si volteada 180°, GRIS si normal 0°
     const flipBtn = this.shadowRoot.getElementById('btnFlip');
     if (flipBtn && this._discoveredEntities.flip) {
-      const state = this._hass.states[this._discoveredEntities.flip]?.state;
+      const state = String(this._hass.states[this._discoveredEntities.flip]?.state || '').toLowerCase();
       const isFlipped = (state === 'on' || state === '180');
       flipBtn.classList.toggle('active', isFlipped);
     }
 
-    // 2. Modo Noche: VERDE sólo si está forzada activa ('always_on' / 'on' / '2'), GRIS si auto o apagada
+    // 2. Modo Noche: VERDE sólo si está forzada activa ('on' / 'always_on' / '2'), GRIS si auto o apagada ('off' / 'auto')
     const nightBtn = this.shadowRoot.getElementById('btnNight');
     if (nightBtn && this._discoveredEntities.night) {
-      const state = (this._hass.states[this._discoveredEntities.night]?.state || '').toLowerCase();
-      const isNightForced = (state === 'always_on' || state === 'on' || state === '2');
-      nightBtn.classList.toggle('active', isNightForced);
+      const state = String(this._hass.states[this._discoveredEntities.night]?.state || '').toLowerCase();
+      const isNightActive = (state === 'on' || state === 'always_on' || state === '2');
+      nightBtn.classList.toggle('active', isNightActive);
     }
 
-    // 3. Privacidad: VERDE sólo si privacidad activa (cámara en reposo/apagada), GRIS si transmitiendo normal
+    // 3. Privacidad: VERDE sólo si privacidad activa (cámara apagada / en reposo), GRIS si cámara encendida / transmitiendo
     const sleepBtn = this.shadowRoot.getElementById('btnSleep');
     const sleepEntity = this._discoveredEntities.sleep;
     if (sleepBtn && sleepEntity) {
-      const state = this._hass.states[sleepEntity]?.state;
+      const state = String(this._hass.states[sleepEntity]?.state || '').toLowerCase();
       let isPrivacyActive = false;
-      if (sleepEntity.includes('power') || sleepEntity.includes('energia')) {
-        // En switches de corriente: 'off' significa que la cámara está en reposo/apagada (privacidad activa)
+      if (sleepEntity.includes('switch_status') || sleepEntity.includes('power') || sleepEntity.includes('energia')) {
+        // En interruptores de encendido/estado: 'off' = cámara apagada/dormida (privacidad activa)
         isPrivacyActive = (state === 'off');
       } else {
-        // En switches dedicados de privacidad: 'on' significa privacidad activa
+        // En interruptores dedicados de privacidad/reposo: 'on' = privacidad activa
         isPrivacyActive = (state === 'on');
       }
       sleepBtn.classList.toggle('active', isPrivacyActive);
@@ -942,6 +989,57 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     select.value = currentVal;
   }
 
+  _ensureWebRTC() {
+    const container = this.shadowRoot.getElementById('videoContainer');
+    if (!container) return;
+
+    const streamName = this._resolveStreamName(this._config?.camera_entity);
+    if (!streamName) {
+      const isEs = (this._hass?.language || 'en').startsWith('es');
+      container.innerHTML = `
+        <div style="color: #71717a; font-size: 13px; text-align: center; padding: 24px;">
+          <svg style="width:36px;height:36px;opacity:0.4;display:block;margin:0 auto 8px;" viewBox="0 0 24 24"><path fill="currentColor" d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/></svg>
+          ${isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor'}
+        </div>
+      `;
+      return;
+    }
+
+    if (!customElements.get('webrtc-camera')) {
+      customElements.whenDefined('webrtc-camera').then(() => {
+        this._ensureWebRTC();
+      });
+      return;
+    }
+
+    let webrtc = container.querySelector('webrtc-camera');
+    if (!webrtc) {
+      container.innerHTML = '';
+      webrtc = document.createElement('webrtc-camera');
+      webrtc.setConfig({
+        url: streamName,
+        muted: true
+      });
+      if (this._hass) {
+        webrtc.hass = this._hass;
+      }
+      container.appendChild(webrtc);
+    } else {
+      if (this._hass && webrtc.hass !== this._hass) {
+        webrtc.hass = this._hass;
+      }
+    }
+
+    // Ensure connection starts even if hass arrived after connectedCallback
+    if (this._hass && webrtc && !webrtc.ws && !webrtc.pc) {
+      try {
+        if (typeof webrtc.onconnect === 'function') {
+          webrtc.onconnect();
+        }
+      } catch (e) {}
+    }
+  }
+
   _render() {
     if (!this._hass) return;
 
@@ -1032,7 +1130,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.5 RECORD-MUTE-ILLUMINATION & DIRECT-WEBRTC ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.6 RECORD-MUTE-ILLUMINATION & DIRECT-WEBRTC ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

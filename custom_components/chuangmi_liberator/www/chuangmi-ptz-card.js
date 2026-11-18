@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.6)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.7)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -47,7 +47,14 @@ const CARD_I18N = {
     editor_helper: '✨ Detección automática: la cruceta PTZ, el botón de grabación y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
     card_name: 'Tarjeta Cámara Chuangmi PTZ',
     card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, grabación instantánea y controles locales para cámaras Chuangmi / Imilab.',
-    badge: '2K WEBRTC',
+    badge_2k: '2K WEBRTC',
+    badge_hd: 'HD 1080P',
+    badge_sd: 'SD FLUIDO',
+    quality_tooltip: 'Hacer clic para alternar resolución (2K Máxima / HD 1080p / SD Fluido)',
+    connecting: 'Conectando con la cámara...',
+    buffering: 'Reanudando emisión...',
+    stream_error: 'Emisión no disponible o reconectando...',
+    retry: 'Reintentar conexión',
     default_title: 'Cámara Chuangmi PTZ'
   },
   en: {
@@ -71,7 +78,14 @@ const CARD_I18N = {
     editor_helper: '✨ Auto-detection: the PTZ D-pad, recording button, and action buttons link automatically without manual IDs.',
     card_name: 'Chuangmi PTZ Camera Card',
     card_desc: '2K live WebRTC streaming with PTZ controls, instant recording, and local controls for Chuangmi / Imilab cameras.',
-    badge: '2K WEBRTC',
+    badge_2k: '2K WEBRTC',
+    badge_hd: 'HD 1080P',
+    badge_sd: 'SD SMOOTH',
+    quality_tooltip: 'Click to switch resolution (2K Max / HD 1080p / SD Smooth)',
+    connecting: 'Connecting camera...',
+    buffering: 'Resuming stream...',
+    stream_error: 'Stream unavailable or reconnecting...',
+    retry: 'Retry connection',
     default_title: 'Chuangmi PTZ Camera'
   }
 };
@@ -147,6 +161,8 @@ class ChuangmiPTZCard extends HTMLElement {
     this._recordSeconds = 0;
     this._rendered = false;
     this._discoveredEntities = {};
+    this._quality = '2k'; // '2k' | 'hd' | 'sd'
+    this._statusTimer = null;
   }
 
   setConfig(config) {
@@ -222,10 +238,17 @@ class ChuangmiPTZCard extends HTMLElement {
     if (lower.includes('369136473') || lower.includes('entrada')) return 'chuangmi_369136473';
     if (lower.includes('369135587') || lower.includes('portable')) return 'chuangmi_369135587';
 
+    let res = camEntity;
     const match = camEntity.match(/\d{8,10}/);
-    if (match) return `chuangmi_${match[0]}`;
+    if (match) res = `chuangmi_${match[0]}`;
 
-    return camEntity;
+    if (this._quality === 'sd' && res && !res.endsWith('_sd')) {
+      return `${res}_sd`;
+    }
+    if (this._quality !== 'sd' && res && res.endsWith('_sd')) {
+      return res.replace(/_sd$/, '');
+    }
+    return res;
   }
 
   _updateEntities() {
@@ -461,32 +484,119 @@ class ChuangmiPTZCard extends HTMLElement {
     }
   }
 
-  _ensureWebRTC() {
+  _cycleQuality() {
+    const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
+    this._quality = cycle[this._quality] || '2k';
+    this._updateQualityBadge();
+    this._ensureWebRTC(true);
+  }
+
+  _updateQualityBadge() {
+    const btn = this.shadowRoot.getElementById('badgeQuality');
+    const label = this.shadowRoot.getElementById('badgeLabel');
+    const i18n = getCardI18n(this._hass);
+    if (!btn || !label) return;
+
+    btn.classList.remove('q-2k', 'q-hd', 'q-sd');
+    btn.classList.add(`q-${this._quality}`);
+
+    if (this._quality === '2k') label.textContent = i18n.badge_2k;
+    else if (this._quality === 'hd') label.textContent = i18n.badge_hd;
+    else if (this._quality === 'sd') label.textContent = i18n.badge_sd;
+  }
+
+  _showOverlay(text, showSpinner = true, showRetry = false) {
+    const overlay = this.shadowRoot.getElementById('videoOverlay');
+    const textEl = this.shadowRoot.getElementById('videoStatusText');
+    const spinner = this.shadowRoot.getElementById('videoSpinner');
+    const retryBtn = this.shadowRoot.getElementById('videoRetryBtn');
+    if (!overlay) return;
+
+    if (text && textEl) textEl.textContent = text;
+    if (spinner) spinner.style.display = showSpinner ? 'block' : 'none';
+    if (retryBtn) retryBtn.style.display = showRetry ? 'block' : 'none';
+    overlay.classList.remove('hidden');
+  }
+
+  _hideOverlay() {
+    const overlay = this.shadowRoot.getElementById('videoOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (this._statusTimer) {
+      clearTimeout(this._statusTimer);
+      this._statusTimer = null;
+    }
+  }
+
+  _monitorVideoElement(webrtc) {
+    const i18n = getCardI18n(this._hass);
+    const attachHandlers = (video) => {
+      if (!video || video._hasStatusHandlers) return;
+      video._hasStatusHandlers = true;
+
+      const onFrameReady = () => this._hideOverlay();
+      video.addEventListener('playing', onFrameReady);
+      video.addEventListener('loadeddata', onFrameReady);
+      video.addEventListener('timeupdate', () => {
+        if (video.currentTime > 0) onFrameReady();
+      });
+
+      video.addEventListener('waiting', () => {
+        this._showOverlay(i18n.buffering, true, false);
+      });
+
+      video.addEventListener('stalled', () => {
+        this._showOverlay(i18n.buffering, true, false);
+      });
+
+      video.addEventListener('error', () => {
+        this._showOverlay(i18n.stream_error, false, true);
+      });
+    };
+
+    // Find video immediately or watch for attachment
+    let video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+    if (video) {
+      attachHandlers(video);
+    } else {
+      const interval = setInterval(() => {
+        video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+        if (video) {
+          attachHandlers(video);
+          clearInterval(interval);
+        }
+      }, 200);
+      setTimeout(() => clearInterval(interval), 6000);
+    }
+  }
+
+  _ensureWebRTC(forceReload = false) {
     const container = this.shadowRoot.getElementById('videoContainer');
     if (!container) return;
 
     const streamName = this._resolveStreamName(this._config?.camera_entity);
+    const i18n = getCardI18n(this._hass);
+
     if (!streamName) {
       const isEs = (this._hass?.language || 'en').startsWith('es');
-      container.innerHTML = `
-        <div style="color: #71717a; font-size: 13px; text-align: center; padding: 24px;">
-          <svg style="width:36px;height:36px;opacity:0.4;display:block;margin:0 auto 8px;" viewBox="0 0 24 24"><path fill="currentColor" d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/></svg>
-          ${isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor'}
-        </div>
-      `;
+      this._showOverlay(isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor', false, false);
       return;
     }
 
     if (!customElements.get('webrtc-camera')) {
+      this._showOverlay(i18n.connecting, true, false);
       customElements.whenDefined('webrtc-camera').then(() => {
-        this._ensureWebRTC();
+        this._ensureWebRTC(forceReload);
       });
       return;
     }
 
     let webrtc = container.querySelector('webrtc-camera');
-    if (!webrtc) {
-      container.innerHTML = '';
+    if (!webrtc || forceReload) {
+      if (webrtc) {
+        try { webrtc.remove(); } catch (_) {}
+      }
+      this._showOverlay(i18n.connecting, true, false);
+
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
@@ -495,14 +605,23 @@ class ChuangmiPTZCard extends HTMLElement {
       if (this._hass) {
         webrtc.hass = this._hass;
       }
-      container.appendChild(webrtc);
+      // Insert before overlay so overlay remains on top
+      const overlay = this.shadowRoot.getElementById('videoOverlay');
+      if (overlay) {
+        container.insertBefore(webrtc, overlay);
+      } else {
+        container.appendChild(webrtc);
+      }
+
+      this._monitorVideoElement(webrtc);
     } else {
       if (this._hass && webrtc.hass !== this._hass) {
         webrtc.hass = this._hass;
       }
+      this._monitorVideoElement(webrtc);
     }
 
-    // Ensure connection starts even if hass arrived after connectedCallback
+    // Force connect if it was idle
     if (this._hass && webrtc && !webrtc.ws && !webrtc.pc) {
       try {
         if (typeof webrtc.onconnect === 'function') {
@@ -510,6 +629,15 @@ class ChuangmiPTZCard extends HTMLElement {
         }
       } catch (e) {}
     }
+
+    // Safety timeout: if after 10s video is still not playing, show retry button
+    if (this._statusTimer) clearTimeout(this._statusTimer);
+    this._statusTimer = setTimeout(() => {
+      const v = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+      if (!v || v.paused || v.currentTime === 0) {
+        this._showOverlay(i18n.stream_error, false, true);
+      }
+    }, 10000);
   }
 
   _render() {
@@ -549,15 +677,101 @@ class ChuangmiPTZCard extends HTMLElement {
           align-items: center;
           gap: 8px;
         }
-        .badge {
-          background: rgba(16, 185, 129, 0.15);
-          color: #10b981;
+        .badge-quality {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
           font-size: 0.7rem;
           font-weight: 800;
-          padding: 3px 8px;
-          border-radius: 6px;
-          border: 1px solid rgba(16, 185, 129, 0.3);
+          padding: 4px 10px;
+          border-radius: 8px;
+          border: 1px solid;
           letter-spacing: 0.5px;
+          cursor: pointer;
+          outline: none;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .badge-quality:hover {
+          transform: translateY(-1px) scale(1.04);
+          filter: brightness(1.15);
+        }
+        .badge-quality:active {
+          transform: scale(0.96);
+        }
+        .badge-quality.q-2k {
+          background: rgba(16, 185, 129, 0.16);
+          border-color: rgba(16, 185, 129, 0.45);
+          color: #10b981;
+        }
+        .badge-quality.q-hd {
+          background: rgba(6, 182, 212, 0.16);
+          border-color: rgba(6, 182, 212, 0.45);
+          color: #06b6d4;
+        }
+        .badge-quality.q-sd {
+          background: rgba(245, 158, 11, 0.16);
+          border-color: rgba(245, 158, 11, 0.45);
+          color: #f59e0b;
+        }
+        .badge-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          box-shadow: 0 0 6px currentColor;
+        }
+        .video-overlay {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle, rgba(17, 21, 28, 0.94) 0%, rgba(9, 11, 15, 0.98) 100%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          z-index: 8;
+          transition: opacity 0.35s ease, visibility 0.35s ease;
+          padding: 20px;
+          text-align: center;
+        }
+        .video-overlay.hidden {
+          opacity: 0;
+          visibility: hidden;
+          pointer-events: none;
+        }
+        .video-spinner {
+          width: 38px;
+          height: 38px;
+          border: 3px solid rgba(16, 185, 129, 0.15);
+          border-top-color: #10b981;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        .video-status-text {
+          font-size: 0.86rem;
+          font-weight: 600;
+          color: #cbd5e1;
+          letter-spacing: 0.3px;
+        }
+        .video-retry-btn {
+          background: #10b981;
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          padding: 8px 18px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        }
+        .video-retry-btn:hover {
+          background: #059669;
+          transform: scale(1.05);
         }
         .video-container {
           position: relative;
@@ -722,10 +936,21 @@ class ChuangmiPTZCard extends HTMLElement {
             </svg>
             <span id="cardTitle">${title}</span>
           </div>
-          <div class="badge">${i18n.badge}</div>
+          <!-- Interactive Resolution & Quality Modulation Badge -->
+          <button class="badge-quality q-2k" id="badgeQuality" title="${i18n.quality_tooltip}">
+            <span class="badge-dot"></span>
+            <span id="badgeLabel">${i18n.badge_2k}</span>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="opacity: 0.8;"><path d="M7,10L12,15L17,10H7Z"/></svg>
+          </button>
         </div>
 
-        <div class="video-container" id="videoContainer"></div>
+        <div class="video-container" id="videoContainer">
+          <div class="video-overlay" id="videoOverlay">
+            <div class="video-spinner" id="videoSpinner"></div>
+            <div class="video-status-text" id="videoStatusText">${i18n.connecting}</div>
+            <button class="video-retry-btn" id="videoRetryBtn" style="display: none;">${i18n.retry}</button>
+          </div>
+        </div>
 
         <div class="controls-panel">
           <div class="ptz-circle">
@@ -828,6 +1053,14 @@ class ChuangmiPTZCard extends HTMLElement {
     this.shadowRoot.getElementById('btnFlip').onclick = () => this._callFlip(this._discoveredEntities.flip);
     this.shadowRoot.getElementById('btnNight').onclick = () => this._cycleNightMode(this._discoveredEntities.night);
     this.shadowRoot.getElementById('btnSleep').onclick = () => this._callSleep(this._discoveredEntities.sleep);
+
+    // Interactive Quality / Resolution Selector Badge
+    const badgeBtn = this.shadowRoot.getElementById('badgeQuality');
+    if (badgeBtn) badgeBtn.onclick = () => this._cycleQuality();
+
+    // Reconnect Retry Button
+    const retryBtn = this.shadowRoot.getElementById('videoRetryBtn');
+    if (retryBtn) retryBtn.onclick = () => this._ensureWebRTC(true);
 
     this._rendered = true;
     this._updateStates();
@@ -989,32 +1222,119 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     select.value = currentVal;
   }
 
-  _ensureWebRTC() {
+  _cycleQuality() {
+    const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
+    this._quality = cycle[this._quality] || '2k';
+    this._updateQualityBadge();
+    this._ensureWebRTC(true);
+  }
+
+  _updateQualityBadge() {
+    const btn = this.shadowRoot.getElementById('badgeQuality');
+    const label = this.shadowRoot.getElementById('badgeLabel');
+    const i18n = getCardI18n(this._hass);
+    if (!btn || !label) return;
+
+    btn.classList.remove('q-2k', 'q-hd', 'q-sd');
+    btn.classList.add(`q-${this._quality}`);
+
+    if (this._quality === '2k') label.textContent = i18n.badge_2k;
+    else if (this._quality === 'hd') label.textContent = i18n.badge_hd;
+    else if (this._quality === 'sd') label.textContent = i18n.badge_sd;
+  }
+
+  _showOverlay(text, showSpinner = true, showRetry = false) {
+    const overlay = this.shadowRoot.getElementById('videoOverlay');
+    const textEl = this.shadowRoot.getElementById('videoStatusText');
+    const spinner = this.shadowRoot.getElementById('videoSpinner');
+    const retryBtn = this.shadowRoot.getElementById('videoRetryBtn');
+    if (!overlay) return;
+
+    if (text && textEl) textEl.textContent = text;
+    if (spinner) spinner.style.display = showSpinner ? 'block' : 'none';
+    if (retryBtn) retryBtn.style.display = showRetry ? 'block' : 'none';
+    overlay.classList.remove('hidden');
+  }
+
+  _hideOverlay() {
+    const overlay = this.shadowRoot.getElementById('videoOverlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (this._statusTimer) {
+      clearTimeout(this._statusTimer);
+      this._statusTimer = null;
+    }
+  }
+
+  _monitorVideoElement(webrtc) {
+    const i18n = getCardI18n(this._hass);
+    const attachHandlers = (video) => {
+      if (!video || video._hasStatusHandlers) return;
+      video._hasStatusHandlers = true;
+
+      const onFrameReady = () => this._hideOverlay();
+      video.addEventListener('playing', onFrameReady);
+      video.addEventListener('loadeddata', onFrameReady);
+      video.addEventListener('timeupdate', () => {
+        if (video.currentTime > 0) onFrameReady();
+      });
+
+      video.addEventListener('waiting', () => {
+        this._showOverlay(i18n.buffering, true, false);
+      });
+
+      video.addEventListener('stalled', () => {
+        this._showOverlay(i18n.buffering, true, false);
+      });
+
+      video.addEventListener('error', () => {
+        this._showOverlay(i18n.stream_error, false, true);
+      });
+    };
+
+    // Find video immediately or watch for attachment
+    let video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+    if (video) {
+      attachHandlers(video);
+    } else {
+      const interval = setInterval(() => {
+        video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+        if (video) {
+          attachHandlers(video);
+          clearInterval(interval);
+        }
+      }, 200);
+      setTimeout(() => clearInterval(interval), 6000);
+    }
+  }
+
+  _ensureWebRTC(forceReload = false) {
     const container = this.shadowRoot.getElementById('videoContainer');
     if (!container) return;
 
     const streamName = this._resolveStreamName(this._config?.camera_entity);
+    const i18n = getCardI18n(this._hass);
+
     if (!streamName) {
       const isEs = (this._hass?.language || 'en').startsWith('es');
-      container.innerHTML = `
-        <div style="color: #71717a; font-size: 13px; text-align: center; padding: 24px;">
-          <svg style="width:36px;height:36px;opacity:0.4;display:block;margin:0 auto 8px;" viewBox="0 0 24 24"><path fill="currentColor" d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/></svg>
-          ${isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor'}
-        </div>
-      `;
+      this._showOverlay(isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor', false, false);
       return;
     }
 
     if (!customElements.get('webrtc-camera')) {
+      this._showOverlay(i18n.connecting, true, false);
       customElements.whenDefined('webrtc-camera').then(() => {
-        this._ensureWebRTC();
+        this._ensureWebRTC(forceReload);
       });
       return;
     }
 
     let webrtc = container.querySelector('webrtc-camera');
-    if (!webrtc) {
-      container.innerHTML = '';
+    if (!webrtc || forceReload) {
+      if (webrtc) {
+        try { webrtc.remove(); } catch (_) {}
+      }
+      this._showOverlay(i18n.connecting, true, false);
+
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
@@ -1023,14 +1343,23 @@ class ChuangmiPTZCardEditor extends HTMLElement {
       if (this._hass) {
         webrtc.hass = this._hass;
       }
-      container.appendChild(webrtc);
+      // Insert before overlay so overlay remains on top
+      const overlay = this.shadowRoot.getElementById('videoOverlay');
+      if (overlay) {
+        container.insertBefore(webrtc, overlay);
+      } else {
+        container.appendChild(webrtc);
+      }
+
+      this._monitorVideoElement(webrtc);
     } else {
       if (this._hass && webrtc.hass !== this._hass) {
         webrtc.hass = this._hass;
       }
+      this._monitorVideoElement(webrtc);
     }
 
-    // Ensure connection starts even if hass arrived after connectedCallback
+    // Force connect if it was idle
     if (this._hass && webrtc && !webrtc.ws && !webrtc.pc) {
       try {
         if (typeof webrtc.onconnect === 'function') {
@@ -1038,6 +1367,15 @@ class ChuangmiPTZCardEditor extends HTMLElement {
         }
       } catch (e) {}
     }
+
+    // Safety timeout: if after 10s video is still not playing, show retry button
+    if (this._statusTimer) clearTimeout(this._statusTimer);
+    this._statusTimer = setTimeout(() => {
+      const v = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+      if (!v || v.paused || v.currentTime === 0) {
+        this._showOverlay(i18n.stream_error, false, true);
+      }
+    }, 10000);
   }
 
   _render() {
@@ -1130,7 +1468,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.6 RECORD-MUTE-ILLUMINATION & DIRECT-WEBRTC ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.7 RECORD-MUTE-ILLUMINATION & DIRECT-WEBRTC ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

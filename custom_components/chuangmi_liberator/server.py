@@ -102,9 +102,15 @@ def generate_chuangmi_config(
         model = c.get("camera_model") or "chuangmi.camera.ipc019e"
         if did and ip:
             stream_name = f"chuangmi_{did}"
+            # 2K / HD primary stream
             streams[stream_name] = [
-                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=sd",
+                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=hd",
                 f"ffmpeg:rtsp://127.0.0.1:{rtsp_port}/{stream_name}#video=h264#audio=opus"
+            ]
+            # SD smooth sub-stream
+            streams[f"{stream_name}_sd"] = [
+                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=sd",
+                f"ffmpeg:rtsp://127.0.0.1:{rtsp_port}/{stream_name}_sd#video=h264#audio=opus"
             ]
 
     cfg = {
@@ -190,12 +196,13 @@ async def async_bridge_to_primary_go2rtc(
         did = str(c.get("camera_did") or "")
         if not did:
             continue
-        stream_name = f"chuangmi_{did}"
-        source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}"
-        params = [("name", stream_name), ("src", source_url)]
-        try:
-            async with session.put(f"{primary_url}/api/streams", params=params, timeout=2) as resp:
-                if resp.status in (200, 201):
-                    _LOGGER.debug("Bridged %s to primary go2rtc (%s)", stream_name, primary_url)
-        except Exception:
-            pass
+        for suffix in ["", "_sd"]:
+            stream_name = f"chuangmi_{did}{suffix}"
+            source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}"
+            params = [("name", stream_name), ("src", source_url)]
+            try:
+                async with session.put(f"{primary_url}/api/streams", params=params, timeout=2) as resp:
+                    if resp.status in (200, 201):
+                        _LOGGER.debug("Bridged %s to primary go2rtc (%s)", stream_name, primary_url)
+            except Exception:
+                pass

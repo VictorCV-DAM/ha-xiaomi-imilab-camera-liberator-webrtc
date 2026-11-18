@@ -201,6 +201,11 @@ class ChuangmiLiberatorCamera(Camera):
         return False
 
     @property
+    def available(self) -> bool:
+        """Report camera as permanently available."""
+        return True
+
+    @property
     def is_streaming(self) -> bool:
         """Report camera as actively streaming."""
         return True

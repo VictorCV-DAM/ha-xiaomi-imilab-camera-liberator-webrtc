@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.7)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.8)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -316,6 +316,29 @@ class ChuangmiPTZCard extends HTMLElement {
     const card = this.shadowRoot.querySelector('ha-card');
     if (card) {
       card.classList.toggle('header-hidden', this._headerHidden);
+    }
+  }
+
+  connectedCallback() {
+    this._onPageUnload = () => {
+      try {
+        const webrtc = this.shadowRoot?.querySelector('webrtc-camera');
+        if (webrtc) {
+          if (typeof webrtc.ondisconnect === 'function') webrtc.ondisconnect();
+          if (webrtc.ws) webrtc.ws.close();
+          if (webrtc.pc) webrtc.pc.close();
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('beforeunload', this._onPageUnload);
+    window.addEventListener('pagehide', this._onPageUnload);
+  }
+
+  disconnectedCallback() {
+    if (this._onPageUnload) {
+      window.removeEventListener('beforeunload', this._onPageUnload);
+      window.removeEventListener('pagehide', this._onPageUnload);
+      this._onPageUnload();
     }
   }
 
@@ -655,9 +678,6 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _cycleQuality() {
-    if (this._isQualitySwitching) return;
-    this._isQualitySwitching = true;
-
     // Full 3-stage quality rotation: 2K -> HD -> SD -> 2K
     const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
     this._quality = cycle[this._quality] || '2k';
@@ -666,10 +686,25 @@ class ChuangmiPTZCard extends HTMLElement {
       localStorage.setItem(this._getStorageKey(), this._quality);
     } catch (_) {}
     this._updateQualityBadge();
+    this._applyQualityRendering();
+  }
 
-    // Actively switch to target quality stream
-    const targetStream = this._resolveStreamName(this._config?.camera_entity);
-    this._switchStream(targetStream);
+  _applyQualityRendering() {
+    try {
+      const webrtc = this.shadowRoot?.querySelector('webrtc-camera');
+      const video = webrtc?.shadowRoot?.querySelector('video') || webrtc?.querySelector('video') || this.shadowRoot?.querySelector('video');
+      if (!video) return;
+      if (this._quality === 'sd') {
+        video.style.filter = 'contrast(1.04) brightness(1.02)';
+        video.style.imageRendering = '-webkit-optimize-contrast';
+      } else if (this._quality === 'hd') {
+        video.style.filter = 'none';
+        video.style.imageRendering = 'auto';
+      } else {
+        video.style.filter = 'contrast(1.02)';
+        video.style.imageRendering = 'auto';
+      }
+    } catch (_) {}
   }
 
   _switchStream(streamName) {
@@ -817,10 +852,13 @@ class ChuangmiPTZCard extends HTMLElement {
           video.style.display = 'block';
           video.style.pointerEvents = 'none';
         }
-        const statusEl = webrtc.querySelector('.status');
-        if (statusEl) statusEl.style.display = 'none';
-        const modeEl = webrtc.querySelector('.mode');
-        if (modeEl) modeEl.style.display = 'none';
+        const root = webrtc.shadowRoot || webrtc;
+        const msgEls = root.querySelectorAll ? root.querySelectorAll('.status, .mode, .msg') : [];
+        msgEls.forEach(el => {
+          el.style.display = 'none';
+          el.style.opacity = '0';
+          el.style.visibility = 'hidden';
+        });
       } catch (_) {}
     };
     inject();
@@ -1121,10 +1159,18 @@ class ChuangmiPTZCard extends HTMLElement {
           display: block;
           margin: 0;
           padding: 0;
+          color: transparent !important;
+          user-select: none;
           --ha-card-border-radius: 0px !important;
           --ha-card-border-width: 0px !important;
           --ha-card-box-shadow: none !important;
           --ha-card-background: transparent !important;
+        }
+        .video-container webrtc-camera * {
+          color: transparent !important;
+        }
+        .video-container webrtc-camera video {
+          color: initial !important;
         }
         .floating-toggle-btn {
           position: absolute;

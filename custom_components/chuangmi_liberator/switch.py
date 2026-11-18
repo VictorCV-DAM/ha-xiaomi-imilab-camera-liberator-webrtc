@@ -89,6 +89,10 @@ class ChuangmiSwitch(SwitchEntity):
         self._attr_is_on = True
 
     @property
+    def extra_state_attributes(self) -> dict:
+        return {"did": self._did}
+
+    @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},

@@ -1,13 +1,13 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.0)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.1)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
  *  - Center intercom/microphone button for bidirectional audio
  *  - Clean bottom bar with 3 actions: Flip 180°, Night Mode, and Privacy Mode
- *  - Dynamic camera auto-discovery: strictly filters Chuangmi Liberator cameras
+ *  - Clean, professional camera listing in dropdown
  *  - Full bilingual localization (English / Spanish) with auto-detection
- *  - Rock-solid visual editor: stable dropdown without closing glitches
+ *  - Direct, reliable go2rtc stream binding without WebSocket proxy errors
  */
 
 const CARD_I18N = {
@@ -64,11 +64,15 @@ function getCardI18n(hass) {
   return lang.startsWith('es') ? CARD_I18N.es : CARD_I18N.en;
 }
 
-function cleanCameraLabel(friendlyName) {
-  if (!friendlyName) return '';
-  return friendlyName
-    .replace(/\s+(Live Camera|Cámara en directo|Camera Control|Control de cámara)$/i, '')
-    .trim();
+function cleanCameraDisplayName(name, did) {
+  if (!name) return did ? `Cámara ${did}` : 'Cámara';
+  let cleaned = name.replace(/\s+(Live Camera|Cámara en directo|Camera Control|Control de cámara)$/i, '').trim();
+  if (cleaned.toLowerCase() === 'camera entrada' || cleaned.toLowerCase() === 'entrada') {
+    cleaned = 'Cámara Entrada';
+  } else if (cleaned.toLowerCase() === 'camara portable' || cleaned.toLowerCase() === 'portable') {
+    cleaned = 'Cámara portable';
+  }
+  return did ? `${cleaned} (${did})` : cleaned;
 }
 
 class ChuangmiPTZCard extends HTMLElement {
@@ -96,17 +100,31 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const hadHass = !!this._hass;
     this._hass = hass;
     this._updateEntities();
+
     if (!this._rendered) {
       this._render();
     } else {
       this._updateStates();
+      // Ensure webrtc-camera element receives hass
+      const webrtc = this.shadowRoot.querySelector('webrtc-camera');
+      if (webrtc) {
+        if (!hadHass) {
+          const streamName = this._resolveStreamName(this._config.camera_entity);
+          webrtc.setConfig({ url: streamName, mode: 'webrtc' });
+        }
+        webrtc.hass = hass;
+      }
     }
   }
 
   static getStubConfig(hass, unusedEntities, allEntities) {
     let defaultCam = '';
+    let defaultStream = '';
+    let defaultDid = '';
+
     if (hass && hass.states) {
       for (const [eid, state] of Object.entries(hass.states)) {
         if (eid.startsWith('camera.')) {
@@ -115,10 +133,12 @@ class ChuangmiPTZCard extends HTMLElement {
             attrs.brand === 'Chuangmi Liberator WebRTC' ||
             (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
             attrs.did ||
-            eid.includes('camera_entrada_camera_') ||
+            eid.includes('camera_entrada') ||
             eid.includes('camara_portable')
           ) {
             defaultCam = eid;
+            defaultDid = attrs.did || (eid.includes('369136473') ? '369136473' : (eid.includes('369135587') ? '369135587' : ''));
+            defaultStream = attrs.stream_name || (defaultDid ? `chuangmi_${defaultDid}` : '');
             break;
           }
         }
@@ -128,36 +148,46 @@ class ChuangmiPTZCard extends HTMLElement {
     return {
       type: 'custom:chuangmi-ptz-card',
       camera_entity: defaultCam,
+      stream_name: defaultStream,
+      did: defaultDid,
       title: ''
     };
   }
 
   _resolveStreamName(camEntity) {
+    if (this._config && this._config.stream_name) {
+      return this._config.stream_name;
+    }
     if (!camEntity) return '';
+
     if (this._hass && this._hass.states[camEntity]) {
       const attrs = this._hass.states[camEntity].attributes || {};
-      if (attrs.stream_name) {
-        return attrs.stream_name;
-      }
-      if (attrs.did) {
-        return `chuangmi_${attrs.did}`;
-      }
+      if (attrs.stream_name) return attrs.stream_name;
+      if (attrs.did) return `chuangmi_${attrs.did}`;
     }
+
+    const lower = camEntity.toLowerCase();
+    if (lower.includes('369136473') || lower.includes('entrada')) return 'chuangmi_369136473';
+    if (lower.includes('369135587') || lower.includes('portable')) return 'chuangmi_369135587';
+
     const match = camEntity.match(/\d{8,10}/);
-    if (match) {
-      return `chuangmi_${match[0]}`;
-    }
+    if (match) return `chuangmi_${match[0]}`;
+
     return camEntity;
   }
 
   _updateEntities() {
     if (!this._hass) return;
     const camEntity = this._config.camera_entity;
-    if (!camEntity || !this._hass.states[camEntity]) return;
+    if (!camEntity) return;
 
     const camState = this._hass.states[camEntity];
-    const attrs = camState.attributes || {};
-    const did = attrs.did || (camEntity.match(/\d{8,10}/) ? camEntity.match(/\d{8,10}/)[0] : '');
+    const attrs = camState?.attributes || {};
+    const did = attrs.did || this._config.did || (camEntity.includes('369136473') ? '369136473' : (camEntity.includes('369135587') ? '369135587' : ''));
+
+    const isEntrada = did === '369136473' || camEntity.toLowerCase().includes('entrada');
+    const isPortable = did === '369135587' || camEntity.toLowerCase().includes('portable');
+    const key = isEntrada ? 'entrada' : (isPortable ? 'portable' : '');
 
     const found = {
       ptz_up: '',
@@ -171,25 +201,27 @@ class ChuangmiPTZCard extends HTMLElement {
 
     const states = this._hass.states;
     for (const [eid, s] of Object.entries(states)) {
-      const matchesDid = did ? eid.includes(did) : false;
-      const lower = eid.toLowerCase();
+      const eidLower = eid.toLowerCase();
+      const fnLower = (s.attributes?.friendly_name || '').toLowerCase();
+      const entityDid = s.attributes?.did || '';
+
+      const matchesCamera = (
+        (did && (entityDid === did || eidLower.includes(did))) ||
+        (key && (eidLower.includes(key) || fnLower.includes(key)))
+      );
+
+      if (!matchesCamera) continue;
 
       if (eid.startsWith('button.')) {
-        if (matchesDid || (!did && (lower.includes('entrada') || lower.includes('portable')))) {
-          if (lower.includes('up') || lower.includes('arriba')) found.ptz_up = eid;
-          else if (lower.includes('down') || lower.includes('abajo')) found.ptz_down = eid;
-          else if (lower.includes('left') || lower.includes('izquierda')) found.ptz_left = eid;
-          else if (lower.includes('right') || lower.includes('derecha')) found.ptz_right = eid;
-        }
+        if (eidLower.includes('up') || eidLower.includes('arriba') || fnLower.includes('up')) found.ptz_up = eid;
+        else if (eidLower.includes('down') || eidLower.includes('abajo') || fnLower.includes('down')) found.ptz_down = eid;
+        else if (eidLower.includes('left') || eidLower.includes('izquierda') || fnLower.includes('left')) found.ptz_left = eid;
+        else if (eidLower.includes('right') || eidLower.includes('derecha') || fnLower.includes('right')) found.ptz_right = eid;
       } else if (eid.startsWith('switch.')) {
-        if (matchesDid || (!did && (lower.includes('entrada') || lower.includes('portable')))) {
-          if (lower.includes('flip') || lower.includes('voltear')) found.flip = eid;
-          else if (lower.includes('power') || lower.includes('reposo') || lower.includes('sleep')) found.sleep = eid;
-        }
+        if (eidLower.includes('flip') || eidLower.includes('voltear') || fnLower.includes('flip')) found.flip = eid;
+        else if (eidLower.includes('power') || eidLower.includes('reposo') || eidLower.includes('sleep') || fnLower.includes('power') || fnLower.includes('sleep')) found.sleep = eid;
       } else if (eid.startsWith('select.')) {
-        if (matchesDid || (!did && (lower.includes('entrada') || lower.includes('portable')))) {
-          if (lower.includes('night') || lower.includes('nocturna')) found.night = eid;
-        }
+        if (eidLower.includes('night') || eidLower.includes('nocturna') || fnLower.includes('night')) found.night = eid;
       }
     }
 
@@ -289,8 +321,11 @@ class ChuangmiPTZCard extends HTMLElement {
   _render() {
     const i18n = getCardI18n(this._hass);
     const camState = this._hass && this._config.camera_entity ? this._hass.states[this._config.camera_entity] : null;
-    const cleanName = camState ? cleanCameraLabel(camState.attributes.friendly_name) : '';
-    const title = this._config.title || cleanName || i18n.default_title;
+    const did = this._config.did || (camState?.attributes?.did) || '';
+    const cleanName = camState ? cleanCameraDisplayName(camState.attributes.friendly_name, '') : '';
+    const title = this._config.title || cleanName || (did ? `Cámara ${did}` : i18n.default_title);
+
+    const streamName = this._resolveStreamName(this._config.camera_entity);
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -335,7 +370,7 @@ class ChuangmiPTZCard extends HTMLElement {
         .video-container {
           position: relative;
           width: 100%;
-          min-height: 220px;
+          min-height: 240px;
           background: #000;
           display: flex;
           align-items: center;
@@ -547,14 +582,12 @@ class ChuangmiPTZCard extends HTMLElement {
       </ha-card>
     `;
 
-    // Embed WebRTC element
+    // Embed WebRTC element - strictly passing url without entity to force direct go2rtc WebRTC routing
     const container = this.shadowRoot.getElementById('videoContainer');
     container.innerHTML = '';
     const webrtc = document.createElement('webrtc-camera');
-    const streamName = this._resolveStreamName(this._config.camera_entity);
     webrtc.setConfig({
       url: streamName,
-      entity: this._config.camera_entity,
       mode: 'webrtc'
     });
     if (this._hass) {
@@ -613,7 +646,7 @@ class ChuangmiPTZCard extends HTMLElement {
 /**
  * Visual Configuration Editor for Chuangmi PTZ Card
  * Features robust DOM persistence to avoid dropdown closing glitches,
- * along with clean labels and full internationalization.
+ * clean human-friendly camera labels, and full internationalization.
  */
 class ChuangmiPTZCardEditor extends HTMLElement {
   constructor() {
@@ -663,15 +696,20 @@ class ChuangmiPTZCardEditor extends HTMLElement {
           attrs.brand === 'Chuangmi Liberator WebRTC' ||
           (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
           attrs.did ||
-          eid.includes('camera_entrada_camera_') ||
+          eid.includes('camera_entrada') ||
           eid.includes('camara_portable')
         );
 
         if (isChuangmi) {
-          const cleanName = cleanCameraLabel(attrs.friendly_name || eid);
+          const did = attrs.did || (eid.includes('369136473') ? '369136473' : (eid.includes('369135587') ? '369135587' : ''));
+          const streamName = attrs.stream_name || (did ? `chuangmi_${did}` : '');
+          const cleanName = cleanCameraDisplayName(attrs.friendly_name || eid, did);
+
           chuangmiCameras.push({
             value: eid,
-            label: `${cleanName} (${eid})`
+            label: cleanName,
+            stream_name: streamName,
+            did: did
           });
         }
       }
@@ -680,10 +718,11 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     if (chuangmiCameras.length === 0) {
       for (const [eid, state] of Object.entries(this._hass.states)) {
         if (eid.startsWith('camera.') && !eid.includes('comedor') && !eid.includes('oukitel')) {
-          const cleanName = cleanCameraLabel(state.attributes.friendly_name || eid);
           chuangmiCameras.push({
             value: eid,
-            label: `${cleanName} (${eid})`
+            label: cleanCameraDisplayName(state.attributes.friendly_name || eid, ''),
+            stream_name: eid,
+            did: ''
           });
         }
       }
@@ -752,10 +791,15 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     const updateConfig = () => {
       const titleInput = this.querySelector('#cfgTitle');
       const entitySelect = this.querySelector('#cfgEntity');
+      const selectedVal = entitySelect ? entitySelect.value : currentEntity;
+      const selectedCam = cameras.find(c => c.value === selectedVal);
+
       const newConfig = {
         ...this._config,
         title: titleInput ? titleInput.value : '',
-        camera_entity: entitySelect ? entitySelect.value : currentEntity,
+        camera_entity: selectedVal,
+        stream_name: selectedCam ? selectedCam.stream_name : '',
+        did: selectedCam ? selectedCam.did : ''
       };
 
       this._config = newConfig;
@@ -791,7 +835,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.0 DYNAMIC ZERO-CONFIG & I18N ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.1 DIRECT-WEBRTC & CLEAN-LABELS ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

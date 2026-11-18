@@ -96,6 +96,10 @@ class ChuangmiRestartButton(ButtonEntity):
         self._attr_icon = "mdi:restart"
 
     @property
+    def extra_state_attributes(self) -> dict:
+        return {"did": self._did}
+
+    @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},
@@ -146,6 +150,10 @@ class ChuangmiPTZButton(ButtonEntity):
         self._attr_translation_key = dir_key
         self._attr_unique_id = f"{DOMAIN}_{did}_{dir_key}"
         self._attr_icon = icon
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"did": self._did}
 
     @property
     def device_info(self) -> DeviceInfo:

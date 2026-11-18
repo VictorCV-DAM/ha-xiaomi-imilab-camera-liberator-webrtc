@@ -72,6 +72,10 @@ class ChuangmiNightModeSelect(SelectEntity):
         self._attr_current_option = "auto"
 
     @property
+    def extra_state_attributes(self) -> dict:
+        return {"did": self._did}
+
+    @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._did)},

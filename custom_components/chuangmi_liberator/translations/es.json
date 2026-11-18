@@ -80,14 +80,6 @@
     }
   },
   "entity": {
-    "camera": {
-      "live_camera": {
-        "name": "Cámara en directo"
-      },
-      "camera": {
-        "name": "Cámara en directo"
-      }
-    },
     "switch": {
       "power": {
         "name": "Modo Reposo / Energía"

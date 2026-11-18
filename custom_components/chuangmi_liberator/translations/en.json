@@ -80,14 +80,6 @@
     }
   },
   "entity": {
-    "camera": {
-      "live_camera": {
-        "name": "Live Camera"
-      },
-      "camera": {
-        "name": "Live Camera"
-      }
-    },
     "switch": {
       "power": {
         "name": "Sleep Mode / Power"

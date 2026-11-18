@@ -214,18 +214,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     primary_url = opts.get(CONF_PRIMARY_GO2RTC_URL, DEFAULT_PRIMARY_GO2RTC_URL)
     log_level = opts.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
 
-    # Generate isolated configuration with assigned non-colliding ports
+    # Generate isolated configuration with assigned non-colliding ports in executor thread
     country = entry.data.get(CONF_SERVER_COUNTRY, "de")
     user_id = entry.data.get(CONF_USERNAME, "")
-    config_path = generate_chuangmi_config(
+    config_path = await hass.async_add_executor_job(
+        generate_chuangmi_config,
         hass,
         cameras,
-        country=country,
-        user_id=user_id,
-        api_port=api_port,
-        rtsp_port=rtsp_port,
-        webrtc_port=webrtc_port,
-        log_level=log_level
+        country,
+        user_id,
+        api_port,
+        rtsp_port,
+        webrtc_port,
+        log_level
     )
 
     # Launch dedicated non-colliding go2rtc daemon if not already running on api_port

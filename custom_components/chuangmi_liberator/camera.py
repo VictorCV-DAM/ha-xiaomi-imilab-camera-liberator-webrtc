@@ -150,7 +150,7 @@ async def async_setup_entry(
 
 class ChuangmiLiberatorCamera(Camera):
     _attr_has_entity_name = True
-    _attr_translation_key = "live_camera"
+    _attr_name = None
 
     def __init__(
         self,

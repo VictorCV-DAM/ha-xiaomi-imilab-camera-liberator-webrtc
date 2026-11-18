@@ -69,11 +69,16 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 The integration includes a dedicated, highly customizable Lovelace card with both a full PTZ control interface and an edge-to-edge minimalist collapsed mode:
 
 <div align="center">
-  <p align="center">
-    <img src="images/screenshot_card_full.jpg" width="46%" alt="Lovelace PTZ Card - 2K WebRTC Live & PTZ Controls" style="display:inline-block; margin: 4px; border-radius: 8px;">
-    &nbsp;&nbsp;
-    <img src="images/screenshot_card_collapsed.jpg" width="46%" alt="Lovelace PTZ Card - Minimal Edge-to-Edge Stream" style="display:inline-block; margin: 4px; border-radius: 8px;">
-  </p>
+<table align="center" style="margin: 0 auto; border: none; background: transparent; border-collapse: collapse;">
+  <tr valign="middle" style="border: none; background: transparent;">
+    <td align="center" valign="middle" style="border: none; background: transparent; padding: 8px; vertical-align: middle;">
+      <img src="images/screenshot_card_full.jpg" width="380" alt="Lovelace PTZ Card - 2K WebRTC Live & PTZ Controls" style="border-radius: 8px; vertical-align: middle; display: block; margin: 0 auto;">
+    </td>
+    <td align="center" valign="middle" style="border: none; background: transparent; padding: 8px; vertical-align: middle;">
+      <img src="images/screenshot_card_collapsed.jpg" width="380" alt="Lovelace PTZ Card - Minimal Edge-to-Edge Stream" style="border-radius: 8px; vertical-align: middle; display: block; margin: 0 auto;">
+    </td>
+  </tr>
+</table>
 </div>
 
 ### 🖱️ 100% GUI Setup via Pre-Made Card Picker (Zero YAML Required)
@@ -81,11 +86,16 @@ The integration includes a dedicated, highly customizable Lovelace card with bot
 You do **not** need to write or copy any manual YAML code! The integration automatically registers `chuangmi-ptz-card` into Home Assistant's native dashboard card catalog with a complete visual configuration editor:
 
 <div align="center">
-  <p align="center">
-    <img src="images/screenshot_card_picker.jpg" width="48%" alt="Add to Dashboard Card Picker - Pre-made Card in Catalog" style="display:inline-block; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin: 4px;">
-    &nbsp;&nbsp;
-    <img src="images/screenshot_card_editor.jpg" width="48%" alt="Interactive Visual Card Editor with Live Preview" style="display:inline-block; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin: 4px;">
-  </p>
+<table align="center" style="margin: 0 auto; border: none; background: transparent; border-collapse: collapse;">
+  <tr valign="middle" style="border: none; background: transparent;">
+    <td align="center" valign="middle" style="border: none; background: transparent; padding: 8px; vertical-align: middle;">
+      <img src="images/screenshot_card_picker.jpg" width="420" alt="Add to Dashboard Card Picker - Pre-made Card in Catalog" style="border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); vertical-align: middle; display: block; margin: 0 auto;">
+    </td>
+    <td align="center" valign="middle" style="border: none; background: transparent; padding: 8px; vertical-align: middle;">
+      <img src="images/screenshot_card_editor.jpg" width="420" alt="Interactive Visual Card Editor with Live Preview" style="border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); vertical-align: middle; display: block; margin: 0 auto;">
+    </td>
+  </tr>
+</table>
 </div>
 
 1. Open any Home Assistant dashboard, click the **three dots `⋮`** (top right) ➔ **Edit Dashboard**.
@@ -132,44 +142,44 @@ title: Front Entrance (2K PTZ)
 
 <div align="center">
 <table align="center" style="margin: 0 auto; text-align: center; border-collapse: collapse;">
-  <tr align="center">
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+  <tr align="center" valign="middle">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Multi-Device Fleet & Entities (v1.1.0)</strong><br><br>
-      <img src="images/screenshot_integration_overview.png" alt="Integration Overview v1.1.0" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_integration_overview.png" alt="Integration Overview v1.1.0" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>15+ Onboard Hardware Controls & Diagnostics</strong><br><br>
-      <img src="images/screenshot_device_controls.jpg" alt="Device Controls and Diagnostics" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_device_controls.jpg" alt="Device Controls and Diagnostics" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
   </tr>
-  <tr align="center">
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+  <tr align="center" valign="middle">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Automatic Local Fleet Discovery</strong><br><br>
-      <img src="images/screenshot_discovery_selection.jpg" alt="Automatic Camera Discovery" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_discovery_selection.jpg" alt="Automatic Camera Discovery" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Port Isolation & go2rtc Coexistence</strong><br><br>
-      <img src="images/screenshot_options_coexistence.png" alt="Port Coexistence Options" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_options_coexistence.png" alt="Port Coexistence Options" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
   </tr>
-  <tr align="center">
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+  <tr align="center" valign="middle">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Brand Search in Home Assistant</strong><br><br>
-      <img src="images/screenshot_brand_search.png" alt="Brand Search" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_brand_search.png" alt="Brand Search" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Lovelace Pre-Made Card Picker</strong><br><br>
-      <img src="images/screenshot_card_picker.jpg" alt="Dashboard Card Picker" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_card_picker.jpg" alt="Dashboard Card Picker" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
   </tr>
-  <tr align="center">
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+  <tr align="center" valign="middle">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Visual Card Editor & Live Preview</strong><br><br>
-      <img src="images/screenshot_card_editor.jpg" alt="Visual Card Configuration Editor" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_card_editor.jpg" alt="Visual Card Configuration Editor" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
-    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+    <td align="center" valign="middle" width="50%" style="padding: 12px; text-align: center; vertical-align: middle;">
       <strong>Edge-to-Edge Stream (Collapsed View)</strong><br><br>
-      <img src="images/screenshot_card_collapsed.jpg" alt="Collapsed Minimal View" style="border-radius: 8px; max-width: 100%;">
+      <img src="images/screenshot_card_collapsed.jpg" alt="Collapsed Minimal View" style="border-radius: 8px; max-width: 100%; vertical-align: middle;">
     </td>
   </tr>
 </table>

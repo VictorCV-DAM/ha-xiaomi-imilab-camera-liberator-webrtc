@@ -79,15 +79,57 @@ function getCardI18n(hass) {
   return lang.startsWith('es') ? CARD_I18N.es : CARD_I18N.en;
 }
 
-function cleanCameraDisplayName(name, did) {
-  if (!name) return did ? `Cámara ${did}` : 'Cámara';
+function cleanCameraDisplayName(name, did = '') {
+  if (!name) return 'Cámara';
   let cleaned = name.replace(/\s+(Live Camera|Cámara en directo|Camera Control|Control de cámara)$/i, '').trim();
-  if (cleaned.toLowerCase() === 'camera entrada' || cleaned.toLowerCase() === 'entrada') {
+  if (cleaned.startsWith('camera.')) {
+    cleaned = cleaned.replace(/^camera\./, '');
+  }
+  if (cleaned.toLowerCase() === 'camera entrada' || cleaned.toLowerCase() === 'camera_entrada' || cleaned.toLowerCase() === 'entrada') {
     cleaned = 'Cámara Entrada';
-  } else if (cleaned.toLowerCase() === 'camara portable' || cleaned.toLowerCase() === 'portable') {
+  } else if (cleaned.toLowerCase() === 'camara portable' || cleaned.toLowerCase() === 'camara_portable' || cleaned.toLowerCase() === 'portable') {
     cleaned = 'Cámara portable';
+  } else {
+    cleaned = cleaned.replace(/_/g, ' ');
+    if (cleaned.length > 0) {
+      cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    }
   }
   return did ? `${cleaned} (${did})` : cleaned;
+}
+
+function getCameraAssignedName(camState, config, hass) {
+  if (config?.title && config.title.trim()) {
+    return config.title.trim();
+  }
+  if (camState && camState.attributes) {
+    const fn = camState.attributes.friendly_name;
+    if (fn && fn.trim()) {
+      return cleanCameraDisplayName(fn.trim(), '');
+    }
+  }
+  if (hass && hass.states) {
+    const targetEntity = config?.camera_entity;
+    if (targetEntity && hass.states[targetEntity]?.attributes?.friendly_name) {
+      return cleanCameraDisplayName(hass.states[targetEntity].attributes.friendly_name, '');
+    }
+    const targetDid = config?.did;
+    const targetStream = config?.stream_name;
+    for (const [eid, state] of Object.entries(hass.states)) {
+      if (eid.startsWith('camera.')) {
+        const attrs = state.attributes || {};
+        if ((targetDid && attrs.did === targetDid) || (targetStream && attrs.stream_name === targetStream)) {
+          if (attrs.friendly_name) {
+            return cleanCameraDisplayName(attrs.friendly_name, '');
+          }
+        }
+      }
+    }
+  }
+  if (config?.camera_entity) {
+    return cleanCameraDisplayName(config.camera_entity, '');
+  }
+  return getCardI18n(hass).default_title;
 }
 
 class ChuangmiPTZCard extends HTMLElement {
@@ -340,9 +382,7 @@ class ChuangmiPTZCard extends HTMLElement {
   _render() {
     const i18n = getCardI18n(this._hass);
     const camState = this._hass && this._config.camera_entity ? this._hass.states[this._config.camera_entity] : null;
-    const did = this._config.did || (camState?.attributes?.did) || '';
-    const cleanName = camState ? cleanCameraDisplayName(camState.attributes.friendly_name, '') : '';
-    const title = this._config.title || cleanName || (did ? `Cámara ${did}` : i18n.default_title);
+    const title = getCameraAssignedName(camState, this._config, this._hass);
 
     const streamName = this._resolveStreamName(this._config.camera_entity);
 
@@ -648,6 +688,16 @@ class ChuangmiPTZCard extends HTMLElement {
   _updateStates() {
     if (!this._hass) return;
 
+    // Dynamically update card title to user-assigned friendly_name
+    const titleEl = this.shadowRoot.getElementById('cardTitle');
+    if (titleEl) {
+      const camState = this._config.camera_entity ? this._hass.states[this._config.camera_entity] : null;
+      const resolvedTitle = getCameraAssignedName(camState, this._config, this._hass);
+      if (resolvedTitle && titleEl.textContent !== resolvedTitle) {
+        titleEl.textContent = resolvedTitle;
+      }
+    }
+
     // Flip button state
     const flipBtn = this.shadowRoot.getElementById('btnFlip');
     if (flipBtn && this._discoveredEntities.flip) {
@@ -735,7 +785,7 @@ class ChuangmiPTZCardEditor extends HTMLElement {
         if (isChuangmi) {
           const did = attrs.did || (eid.includes('369136473') ? '369136473' : (eid.includes('369135587') ? '369135587' : ''));
           const streamName = attrs.stream_name || (did ? `chuangmi_${did}` : '');
-          const cleanName = cleanCameraDisplayName(attrs.friendly_name || eid, did);
+          const cleanName = cleanCameraDisplayName(attrs.friendly_name || eid, '');
 
           chuangmiCameras.push({
             value: eid,
@@ -870,7 +920,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.2 FULL-DISCOVERY & DIRECT-WEBRTC ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.3 USER-ASSIGNED-TITLES & DIRECT-WEBRTC ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

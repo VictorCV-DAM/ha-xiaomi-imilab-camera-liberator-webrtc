@@ -78,11 +78,13 @@ The integration includes a dedicated, highly customizable Lovelace card with bot
 
 ### 🖱️ 100% GUI Setup via Pre-Made Card Picker (Zero YAML Required)
 
-You do **not** need to write or copy any manual YAML code! The integration automatically registers `chuangmi-ptz-card` into Home Assistant's native dashboard card selector:
+You do **not** need to write or copy any manual YAML code! The integration automatically registers `chuangmi-ptz-card` into Home Assistant's native dashboard card catalog with a complete visual configuration editor:
 
 <div align="center">
   <p align="center">
-    <img src="images/screenshot_card_picker.jpg" width="85%" alt="Add to Dashboard Card Picker - Pre-made Card with Live Preview" style="border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin: 10px auto;">
+    <img src="images/screenshot_card_picker.jpg" width="48%" alt="Add to Dashboard Card Picker - Pre-made Card in Catalog" style="display:inline-block; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin: 4px;">
+    &nbsp;&nbsp;
+    <img src="images/screenshot_card_editor.jpg" width="48%" alt="Interactive Visual Card Editor with Live Preview" style="display:inline-block; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin: 4px;">
   </p>
 </div>
 
@@ -97,6 +99,7 @@ You do **not** need to write or copy any manual YAML code! The integration autom
    - 180° image inversion toggle
    - 3-state Night Vision IR switcher
    - Sleep / Privacy standby switch
+6. **🎛️ Live Visual Customization:** Toggle display options (show/hide PTZ D-pad and bottom actions, or hide the top header for a clean edge-to-edge video look) with instant side-by-side live preview before saving.
 
 <details>
 <summary><strong>⚙️ Advanced Manual YAML Configuration (Optional)</strong></summary>
@@ -157,6 +160,16 @@ title: Front Entrance (2K PTZ)
     <td align="center" width="50%" style="padding: 12px; text-align: center;">
       <strong>Lovelace Pre-Made Card Picker</strong><br><br>
       <img src="images/screenshot_card_picker.jpg" alt="Dashboard Card Picker" style="border-radius: 8px; max-width: 100%;">
+    </td>
+  </tr>
+  <tr align="center">
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Visual Card Editor & Live Preview</strong><br><br>
+      <img src="images/screenshot_card_editor.jpg" alt="Visual Card Configuration Editor" style="border-radius: 8px; max-width: 100%;">
+    </td>
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Edge-to-Edge Stream (Collapsed View)</strong><br><br>
+      <img src="images/screenshot_card_collapsed.jpg" alt="Collapsed Minimal View" style="border-radius: 8px; max-width: 100%;">
     </td>
   </tr>
 </table>

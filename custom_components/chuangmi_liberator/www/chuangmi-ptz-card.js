@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.8)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.9)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -229,13 +229,11 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _loadPreferences() {
-    // 1. Resolution / Quality (2K, HD, SD)
+    // 1. Always prioritize native 2K WebRTC (fastest, sharpest, zero-delay stream)
+    this._quality = '2k';
     try {
-      const savedQuality = localStorage.getItem(this._getStorageKey());
-      this._quality = this._config.quality || savedQuality || '2k';
-    } catch (_) {
-      this._quality = this._config.quality || '2k';
-    }
+      localStorage.removeItem(this._getStorageKey());
+    } catch (_) {}
 
     // 2. Controls collapsed / expanded
     try {
@@ -678,15 +676,14 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _cycleQuality() {
-    // Full 3-stage quality rotation: 2K -> HD -> SD -> 2K
-    const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
-    this._quality = cycle[this._quality] || '2k';
-
-    try {
-      localStorage.setItem(this._getStorageKey(), this._quality);
-    } catch (_) {}
+    // Native 2K WebRTC stream is always active and optimal.
+    this._quality = '2k';
     this._updateQualityBadge();
-    this._applyQualityRendering();
+    const badge = this.shadowRoot.getElementById('badgeQuality');
+    if (badge) {
+      badge.style.transform = 'scale(1.08)';
+      setTimeout(() => { badge.style.transform = 'scale(1)'; }, 200);
+    }
   }
 
   _applyQualityRendering() {
@@ -793,10 +790,14 @@ class ChuangmiPTZCard extends HTMLElement {
       } catch (_) {}
 
       const onFrameReady = () => {
-        this._hideOverlay();
-        if (this._statusTimer) {
-          clearTimeout(this._statusTimer);
-          this._statusTimer = null;
+        // Ensure video is rendered and painted before removing overlay
+        if (video.videoWidth > 0 || video.currentTime > 0.2) {
+          video.style.opacity = '1';
+          this._hideOverlay();
+          if (this._statusTimer) {
+            clearTimeout(this._statusTimer);
+            this._statusTimer = null;
+          }
         }
       };
 
@@ -850,7 +851,9 @@ class ChuangmiPTZCard extends HTMLElement {
           video.style.height = '100%';
           video.style.objectFit = 'contain';
           video.style.display = 'block';
+          video.style.backgroundColor = '#0b0d11';
           video.style.pointerEvents = 'none';
+          video.style.transition = 'opacity 0.3s ease';
         }
         const root = webrtc.shadowRoot || webrtc;
         const msgEls = root.querySelectorAll ? root.querySelectorAll('.status, .mode, .msg') : [];

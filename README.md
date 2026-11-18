@@ -27,6 +27,12 @@
   <em>After years without native local support or RTSP firmware, this integration completely liberates a vast fleet of Xiaomi / Chuangmi / Imilab cameras with <strong>native 2K WebRTC streaming</strong>, <strong>in-card quick video recording</strong>, <strong>100% local UDP PTZ motor control</strong>, and a dedicated tactile Lovelace PTZ card — <strong>zero cloud subscriptions, zero hacking</strong>.</em>
 </p>
 
+> [!IMPORTANT]
+> **🌐 Local LAN Streaming vs. Cloud Handshake (Full Disclosure):**
+> - **🔒 100% Local Video & PTZ Traffic:** Video payload (high-bitrate 2K feed) and PTZ motor commands flow **exclusively within your local LAN** (Camera ➔ Home Assistant `go2rtc` ➔ Dashboard). No video is ever routed through external cloud servers.
+> - **🔑 Cloud Authentication Handshake:** Stock Xiaomi/Chuangmi cameras lack open RTSP servers and use Xiaomi's proprietary MISS protocol. Initial cryptographic stream authorization requires `go2rtc` to fetch session keys from Xiaomi Cloud.
+> - **⚠️ Do NOT remove cameras from the Xiaomi Home app:** Deleting a camera from your account triggers an automatic factory reset on the device and permanently revokes `go2rtc` streaming authorization. See [Local LAN vs Cloud Transparency](#-local-lan-vs-cloud-transparency) below.
+
 ---
 
 ## 📦 Installation via HACS
@@ -277,6 +283,24 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 
 1. **Video Path:** WebRTC frames stream directly between `go2rtc` and your browser/app. The card streams native ultra-crisp resolution directly without transcoding.
 2. **Control Path:** PTZ moves and switch commands are transmitted directly via UDP packets using miIO AES-CBC encryption without internet roundtrips.
+
+---
+
+### 🌐 Local LAN vs Cloud Transparency
+
+For privacy-conscious smart home users who prioritize local network operation, here is the exact breakdown of what runs locally vs. where cloud handshakes are required:
+
+| Feature / Traffic | Local LAN or Cloud? | Details |
+| :--- | :---: | :--- |
+| **Video Stream Payload (H.265/H.264)** | **🔒 100% Local LAN** | High-bandwidth video frames travel directly from Camera IP ➔ Home Assistant `go2rtc` ➔ Browser/App. Your private video feed is **never** uploaded or relayed through Xiaomi servers. Zero cloud subscriptions required. |
+| **PTZ Motor & Hardware Controls** | **🔒 100% Local LAN** | Directional movement, night vision IR, LED, flip 180°, and privacy switches execute via direct UDP packets (`miIO` port 54321) encrypted with your 32-character token. These work completely without internet access. |
+| **Stream Session Handshake** | **☁️ Cloud Handshake** | Stock Xiaomi/Imilab cameras (`ipc019e`, etc.) run closed firmware without an open RTSP daemon. To authorize the native P2P/MISS video stream, `go2rtc` must request cryptographic session tickets from Xiaomi Cloud for your account and camera `DID`. |
+| **Internet Connectivity Requirement** | **⚠️ Internet Required** | Cameras and Home Assistant require internet access so the camera can maintain its Xiaomi cloud pairing and `go2rtc` can renew stream session tickets. Completely firewalled cameras will fail to authorize video streams upon reboot. |
+
+#### ⚠️ Critical Advice: Do NOT Delete Cameras from Xiaomi Home
+- **Device Self-Reset:** In the Xiaomi ecosystem, removing or unbinding a camera from the Xiaomi Home app pushes an immediate remote wipe/reset signal to the hardware. The camera destroys its local `token`, disconnects from your Wi-Fi, and reverts to unconfigured setup mode (*"Waiting to connect"*).
+- **Stream Authorization Revoked:** `go2rtc` authenticates streams using your Xiaomi `user_id`. Once deleted from your cloud account, Xiaomi's API will reject `go2rtc` stream ticket requests with *Device not owned by user*, permanently breaking video streaming.
+- **Best Practice:** Keep the cameras bound in your Xiaomi Home app, but configure them in Home Assistant using this integration. You will never need to open the Xiaomi Home app again for daily viewing or control!
 
 ---
 

@@ -8,9 +8,9 @@
   [![HACS](https://img.shields.io/badge/HACS-Custom%20Integration-41BDF5.svg)](https://github.com/hacs/default)
   [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1.0%20%E2%80%94%202026.9.4%2B-41BDF5.svg?logo=home-assistant)](https://www.home-assistant.io/)
   [![WebRTC](https://img.shields.io/badge/Streaming-WebRTC%202K%20%2F%20HD-green.svg)](https://github.com/AlexxIT/go2rtc)
-  [![Downloads](https://img.shields.io/github/downloads/VictorCV-DAM/ha-chuangmi-liberator-webrtc/total.svg?color=brightgreen)](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases)
-  [![Latest Release](https://img.shields.io/github/v/release/VictorCV-DAM/ha-chuangmi-liberator-webrtc?color=blue)](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/blob/main/LICENSE)
+  [![Downloads](https://img.shields.io/github/downloads/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc/total.svg?color=brightgreen)](https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc/releases)
+  [![Latest Release](https://img.shields.io/github/v/release/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc?color=blue)](https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc/releases)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc/blob/main/LICENSE)
   
   [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/VictorCV)
   [![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?logo=paypal)](https://paypal.me/victorcava)
@@ -114,13 +114,13 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 | `isa.camera.isc5` | Xiaomi Outdoor Camera AW200 | 1080p | Fixed Outdoor | Local miIO + MISS |
 | `isa.camera.hlc7` | Xiaomi Smart Camera PTZ Pro | 2K | Dome PTZ | Isaac firmware variant |
 
-> 💡 **Have a different model?** If you have tested another Chuangmi, Imilab, or Xiaomi camera model with this integration, please [open a GitHub Issue](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/issues) to report your results and help expand the verified list!
+> 💡 **Have a different model?** If you have tested another Chuangmi, Imilab, or Xiaomi camera model with this integration, please [open a GitHub Issue](https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc/issues) to report your results and help expand the verified list!
 
 ---
 
 ## 📦 Installation via HACS
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=VictorCV-DAM&repository=ha-chuangmi-liberator-webrtc&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=VictorCV-DAM&repository=ha-xiaomi-imilab-camera-liberator-webrtc&category=integration)
 
 ### ⚡ 1-Click Fast Install
 Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** directly inside your Home Assistant HACS store, then click **Download**.
@@ -129,7 +129,7 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 1. Open **HACS** in your Home Assistant sidebar.
 2. Click the three dots (top right corner) and select **Custom repositories**.
 3. Paste the repository URL:  
-   `https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc`
+   `https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc`
 4. Set category to **Integration** and click **Add**.
 5. Find **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** in the list and click **Download**.
 6. Restart Home Assistant (*Settings > System > Restart*).

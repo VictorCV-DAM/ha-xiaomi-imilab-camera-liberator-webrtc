@@ -19,7 +19,7 @@ if (!window.customCards.some(c => c.type === 'chuangmi-ptz-card')) {
     name: 'Chuangmi PTZ Camera (Cámara PTZ)',
     description: 'Live 2K WebRTC streaming with PTZ controls, instant recording, and local toggles for Chuangmi / Imilab cameras.',
     preview: true,
-    documentationURL: 'https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc'
+    documentationURL: 'https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc'
   });
 }
 try {
@@ -1711,7 +1711,7 @@ window.customCards.push({
   name: 'Cámara Chuangmi PTZ',
   description: 'Streaming WebRTC 2K en directo con controles PTZ de movimiento, grabación instantánea y controles locales para cámaras Chuangmi, Imilab y Xiaomi.',
   preview: true,
-  documentationURL: 'https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc'
+  documentationURL: 'https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc'
 });
 try {
   window.dispatchEvent(new CustomEvent('custom-card-registered', { detail: 'chuangmi-ptz-card' }));

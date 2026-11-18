@@ -258,15 +258,15 @@ class ChuangmiLiberatorCamera(Camera):
         """Provide low-latency stream url registered in go2rtc."""
         stream_name = f"chuangmi_{self._did}"
         user_id = self._stored_user_id or "admin"
-        stream_url = f"xiaomi://{user_id}:{self._country}@{self._ip}?did={self._did}&model={self._model}&subtype=sd"
+        stream_url = f"xiaomi://{user_id}:{self._country}@{self._ip}?did={self._did}&model={self._model}&subtype=0"
 
         await self._async_inject_go2rtc(stream_name, stream_url)
 
         auth = self._go2rtc_auth
         if auth and auth.login and auth.password:
-            rtsp = f"rtsp://{auth.login}:{auth.password}@127.0.0.1:{self._rtsp_port}/{stream_name}"
+            rtsp = f"rtsp://{auth.login}:{auth.password}@127.0.0.1:{self._rtsp_port}/{stream_name}#transport=tcp"
         else:
-            rtsp = f"rtsp://127.0.0.1:{self._rtsp_port}/{stream_name}"
+            rtsp = f"rtsp://127.0.0.1:{self._rtsp_port}/{stream_name}#transport=tcp"
         return rtsp
 
     async def _async_inject_go2rtc(self, name: str, src: str):

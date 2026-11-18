@@ -102,13 +102,12 @@ def generate_chuangmi_config(
         model = c.get("camera_model") or "chuangmi.camera.ipc019e"
         if did and ip:
             stream_name = f"chuangmi_{did}"
-            # 2K / HD stream (subtype=hd)
+            # Native camera stream (subtype=0 is the only subtype accepted by Chuangmi/Imilab firmware)
             streams[stream_name] = [
-                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=hd"
+                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=0"
             ]
-            # SD smooth sub-stream (subtype=sd)
             streams[f"{stream_name}_sd"] = [
-                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=sd"
+                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=0"
             ]
 
     cfg = {
@@ -196,7 +195,7 @@ async def async_bridge_to_primary_go2rtc(
             continue
         for suffix in ["", "_sd"]:
             stream_name = f"chuangmi_{did}{suffix}"
-            source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}"
+            source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}#transport=tcp"
             payload = {
                 "name": stream_name,
                 "src": [

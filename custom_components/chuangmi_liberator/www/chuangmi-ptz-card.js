@@ -800,6 +800,9 @@ class ChuangmiPTZCard extends HTMLElement {
               width: 100% !important;
               background: transparent !important;
             }
+            .status {
+              display: none !important;
+            }
             video {
               width: 100% !important;
               height: auto !important;
@@ -812,6 +815,8 @@ class ChuangmiPTZCard extends HTMLElement {
           `;
           sr.appendChild(style);
         }
+        const statusEl = webrtc.querySelector('.status');
+        if (statusEl) statusEl.style.display = 'none';
       } catch (_) {}
     };
     inject();

@@ -1691,10 +1691,14 @@ class ChuangmiPTZCardEditor extends HTMLElement {
   }
 }
 
-customElements.define('chuangmi-ptz-card-editor', ChuangmiPTZCardEditor);
+if (!customElements.get('chuangmi-ptz-card-editor')) {
+  customElements.define('chuangmi-ptz-card-editor', ChuangmiPTZCardEditor);
+}
 ChuangmiPTZCard.getConfigElement = () => document.createElement('chuangmi-ptz-card-editor');
 
-customElements.define('chuangmi-ptz-card', ChuangmiPTZCard);
+if (!customElements.get('chuangmi-ptz-card')) {
+  customElements.define('chuangmi-ptz-card', ChuangmiPTZCard);
+}
 
 // Register in Home Assistant Card Picker (bottom safeguard)
 window.customCards = window.customCards || [];

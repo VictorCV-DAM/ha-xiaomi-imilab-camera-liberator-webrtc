@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.9)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.9.0)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -789,10 +789,26 @@ class ChuangmiPTZCard extends HTMLElement {
         video.controls = false;
       } catch (_) {}
 
+      const tuneLatency = () => {
+        try {
+          if (webrtc && webrtc.pc) {
+            webrtc.pc.getReceivers().forEach(r => {
+              if ('jitterBufferTarget' in r) {
+                r.jitterBufferTarget = 0;
+              }
+              if ('playoutDelayHint' in r) {
+                r.playoutDelayHint = 0;
+              }
+            });
+          }
+        } catch (_) {}
+      };
+
       const onFrameReady = () => {
         // Ensure video is rendered and painted before removing overlay
-        if (video.videoWidth > 0 || video.currentTime > 0.2) {
+        if (video.videoWidth > 0 || video.currentTime > 0.1) {
           video.style.opacity = '1';
+          tuneLatency();
           this._hideOverlay();
           if (this._statusTimer) {
             clearTimeout(this._statusTimer);
@@ -801,7 +817,21 @@ class ChuangmiPTZCard extends HTMLElement {
         }
       };
 
-      video.addEventListener('playing', onFrameReady);
+            video.addEventListener('playing', () => {
+        onFrameReady();
+        tuneLatency();
+      });
+      video.addEventListener('loadeddata', () => {
+        onFrameReady();
+        tuneLatency();
+      });
+      const latencyTimer = setInterval(() => {
+        if (!video.paused && video.srcObject) {
+          tuneLatency();
+        } else if (!this.isConnected) {
+          clearInterval(latencyTimer);
+        }
+      }, 2500);
       video.addEventListener('loadeddata', onFrameReady);
       video.addEventListener('timeupdate', () => {
         if (video.currentTime > 0) onFrameReady();
@@ -995,57 +1025,35 @@ class ChuangmiPTZCard extends HTMLElement {
         .header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 14px 18px 10px 18px;
+          padding: 14px 18px 12px 18px;
           background: linear-gradient(180deg, rgba(24, 27, 32, 0.95) 0%, rgba(16, 18, 22, 0.85) 100%);
-        }
-        .header-actions {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .header-icon-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 8px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: #94a3b8;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          padding: 0;
-          outline: none;
-        }
-        .header-icon-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          color: #ffffff;
-          transform: scale(1.05);
-        }
-        .header-icon-btn:active {
-          transform: scale(0.95);
-        }
-        .header-icon-btn.active {
-          background: rgba(16, 185, 129, 0.16);
-          border-color: rgba(16, 185, 129, 0.4);
-          color: #10b981;
-        }
-        .header-icon-btn .toggle-icon {
-          transition: transform 0.25s ease;
+          width: 100%;
+          box-sizing: border-box;
         }
         .header-title {
+          flex: 1;
+          min-width: 0;
+          width: 100%;
           font-weight: 700;
           font-size: 1.05rem;
           letter-spacing: 0.3px;
           color: #ffffff;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
           cursor: pointer;
           user-select: none;
           transition: opacity 0.15s ease, transform 0.1s ease;
+        }
+        .header-title svg {
+          flex-shrink: 0;
+        }
+        .header-title #cardTitle {
+          flex: 1;
+          min-width: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .header-title:hover {
           opacity: 0.85;
@@ -1369,27 +1377,11 @@ class ChuangmiPTZCard extends HTMLElement {
         <div class="header">
           <div class="header-title" id="headerTitle" title="${i18n.more_info_tooltip}">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="#10b981">
-              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,6M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
+              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
             </svg>
             <span id="cardTitle">${title}</span>
           </div>
-          <div class="header-actions">
-            <!-- Interactive Resolution & Quality Modulation Badge -->
-            <button class="badge-quality q-${this._quality}" id="badgeQuality" title="${i18n.quality_tooltip}">
-              <span class="badge-dot"></span>
-              <span id="badgeLabel">${this._quality === '2k' ? i18n.badge_2k : (this._quality === 'hd' ? i18n.badge_hd : i18n.badge_sd)}</span>
-              <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="opacity: 0.8;"><path d="M7,10L12,15L17,10H7Z"/></svg>
-            </button>
-
-            <!-- Toggle Controls Collapse/Expand Button -->
-            <button class="header-icon-btn ${!this._controlsCollapsed ? 'active' : ''}" id="btnToggleControls" title="${this._controlsCollapsed ? i18n.show_controls : i18n.hide_controls}">
-              <svg class="toggle-icon" style="transform: ${this._controlsCollapsed ? 'rotate(180deg)' : 'rotate(0deg)'};" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z"/>
-              </svg>
-            </button>
-          </div>
         </div>
-
         <div class="video-container" id="videoContainer">
           <button class="floating-toggle-btn" id="btnFloatingToggle" title="${this._controlsCollapsed ? i18n.show_controls : i18n.hide_controls}">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">

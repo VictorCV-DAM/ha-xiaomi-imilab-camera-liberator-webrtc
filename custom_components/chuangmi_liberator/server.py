@@ -77,8 +77,23 @@ def generate_chuangmi_config(
         except Exception as e:
             _LOGGER.debug("Could not read xiaomi block from go2rtc.yaml: %s", e)
 
-    if xiaomi_creds and (not user_id or user_id not in xiaomi_creds):
-        user_id = next(iter(xiaomi_creds.keys()))
+    # Robust numeric user ID resolution
+    if not (user_id and str(user_id).isdigit() and str(user_id) in xiaomi_creds):
+        resolved_uid = None
+        s_dir = hass.config.path(".storage", "xiaomi_miot")
+        if os.path.isdir(s_dir):
+            for filename in os.listdir(s_dir):
+                if (filename.startswith("devices-") or filename.startswith("auth-")) and filename.endswith(".json"):
+                    parts = filename.replace("devices-", "").replace("auth-", "").replace(".json", "").split("-")
+                    if parts and parts[0].isdigit() and parts[0] in xiaomi_creds:
+                        resolved_uid = parts[0]
+                        break
+        if resolved_uid:
+            user_id = resolved_uid
+        elif "6243072468" in xiaomi_creds:
+            user_id = "6243072468"
+        elif xiaomi_creds:
+            user_id = next(iter(xiaomi_creds.keys()))
 
     streams = {}
     for c in cameras:

@@ -213,11 +213,6 @@ class ChuangmiLiberatorCamera(Camera):
         return "streaming"
 
     @property
-    def frontend_stream_type(self) -> StreamType:
-        """Return WebRTC so Home Assistant UI uses modern zero-latency WebRTC directly."""
-        return StreamType.WEB_RTC
-
-    @property
     def extra_state_attributes(self) -> dict:
         """Return device-specific attributes for Lovelace card and automations."""
         return {
@@ -273,74 +268,6 @@ class ChuangmiLiberatorCamera(Camera):
         else:
             rtsp = f"rtsp://127.0.0.1:{self._rtsp_port}/{stream_name}"
         return rtsp
-
-    async def async_handle_async_webrtc_offer(
-        self,
-        offer_sdp: str,
-        session_id: str,
-        send_message: WebRTCSendMessage,
-    ) -> None:
-        """Handle WebRTC negotiation directly through go2rtc core for Home Assistant 2024.11+."""
-        stream_name = f"chuangmi_{self._did}"
-        session = async_get_clientsession(self.hass)
-        auth = self._go2rtc_auth
-        url = f"{self._api_url}/api/webrtc?src={stream_name}"
-        headers = {"Content-Type": "application/sdp"}
-        try:
-            async with session.post(
-                url,
-                data=offer_sdp,
-                headers=headers,
-                auth=auth,
-                timeout=10
-            ) as resp:
-                if resp.status in (200, 201):
-                    answer_data = await resp.text()
-                    if WebRTCAnswer is not None:
-                        try:
-                            send_message(WebRTCAnswer(answer=answer_data))
-                        except TypeError:
-                            send_message(WebRTCAnswer(answer_data))
-                    return
-                body = await resp.text()
-                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s: %s", resp.status, body)
-                if WebRTCError is not None:
-                    send_message(WebRTCError("go2rtc_error", f"HTTP {resp.status}: {body}"))
-        except Exception as e:
-            _LOGGER.error("Error exchanging WebRTC offer for %s: %s", stream_name, e)
-            if WebRTCError is not None:
-                send_message(WebRTCError("webrtc_failed", str(e)))
-
-    async def async_on_webrtc_candidate(self, session_id: str, candidate=None, **kwargs) -> None:
-        """Handle incoming ICE candidate from client."""
-        pass
-
-    def close_webrtc_session(self, session_id: str) -> None:
-        """Close active WebRTC session."""
-        pass
-
-    async def async_handle_web_rtc_offer(self, offer_sdp: str) -> Optional[str]:
-        """Backward compatibility for synchronous WebRTC offer handling."""
-        stream_name = f"chuangmi_{self._did}"
-        session = async_get_clientsession(self.hass)
-        auth = self._go2rtc_auth
-        url = f"{self._api_url}/api/webrtc?src={stream_name}"
-        headers = {"Content-Type": "application/sdp"}
-        try:
-            async with session.post(
-                url,
-                data=offer_sdp,
-                headers=headers,
-                auth=auth,
-                timeout=10
-            ) as resp:
-                if resp.status in (200, 201):
-                    return await resp.text()
-                body = await resp.text()
-                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s: %s", resp.status, body)
-        except Exception as e:
-            _LOGGER.error("Error exchanging WebRTC offer for %s: %s", stream_name, e)
-        return None
 
     async def _async_inject_go2rtc(self, name: str, src: str):
         """Register the native stream into go2rtc API."""

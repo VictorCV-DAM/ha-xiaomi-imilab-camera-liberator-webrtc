@@ -1,13 +1,75 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.0)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
  *  - Center intercom/microphone button for bidirectional audio
  *  - Clean bottom bar with 3 actions: Flip 180°, Night Mode, and Privacy Mode
  *  - Dynamic camera auto-discovery: strictly filters Chuangmi Liberator cameras
- *  - No hardcoded DIDs, IP addresses, or personal credentials
+ *  - Full bilingual localization (English / Spanish) with auto-detection
+ *  - Rock-solid visual editor: stable dropdown without closing glitches
  */
+
+const CARD_I18N = {
+  es: {
+    talk: 'HABLAR',
+    talking: 'HABLANDO...',
+    talk_tooltip: 'Mantener pulsado o hacer clic para hablar (Intercomunicador)',
+    flip: 'Invertir',
+    flip_tooltip: 'Invertir imagen 180°',
+    night: 'Modo Noche',
+    night_tooltip: 'Modo Noche / Visión Nocturna',
+    privacy: 'Privacidad',
+    privacy_tooltip: 'Modo Privacidad (Reposo / Apagado)',
+    up: 'Mover Arriba',
+    down: 'Mover Abajo',
+    left: 'Mover Izquierda',
+    right: 'Mover Derecha',
+    editor_title: 'Título de la tarjeta:',
+    editor_title_placeholder: 'Cámara Entrada (2K PTZ)',
+    editor_select_camera: 'Seleccionar Cámara Chuangmi / Xiaomi:',
+    editor_helper: '✨ Detección automática: la cruceta PTZ, el micrófono bidireccional y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
+    card_name: 'Tarjeta Cámara Chuangmi PTZ',
+    card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, audio bidireccional y controles locales para cámaras Chuangmi / Imilab.',
+    badge: '2K WEBRTC',
+    default_title: 'Cámara Chuangmi PTZ'
+  },
+  en: {
+    talk: 'TALK',
+    talking: 'TALKING...',
+    talk_tooltip: 'Click or hold to talk (Intercom)',
+    flip: 'Flip 180°',
+    flip_tooltip: 'Flip image 180°',
+    night: 'Night Mode',
+    night_tooltip: 'Night Vision / Night Mode',
+    privacy: 'Privacy',
+    privacy_tooltip: 'Privacy Mode (Sleep / Power)',
+    up: 'Move Up',
+    down: 'Move Down',
+    left: 'Move Left',
+    right: 'Move Right',
+    editor_title: 'Card title:',
+    editor_title_placeholder: 'Entrance Camera (2K PTZ)',
+    editor_select_camera: 'Select Chuangmi / Xiaomi Camera:',
+    editor_helper: '✨ Auto-detection: the PTZ D-pad, two-way microphone, and action buttons link automatically without manual IDs.',
+    card_name: 'Chuangmi PTZ Camera Card',
+    card_desc: '2K live WebRTC streaming with PTZ controls, two-way audio, and local controls for Chuangmi / Imilab cameras.',
+    badge: '2K WEBRTC',
+    default_title: 'Chuangmi PTZ Camera'
+  }
+};
+
+function getCardI18n(hass) {
+  const lang = (hass?.locale?.language || hass?.language || navigator.language || 'en').toLowerCase();
+  return lang.startsWith('es') ? CARD_I18N.es : CARD_I18N.en;
+}
+
+function cleanCameraLabel(friendlyName) {
+  if (!friendlyName) return '';
+  return friendlyName
+    .replace(/\s+(Live Camera|Cámara en directo|Camera Control|Control de cámara)$/i, '')
+    .trim();
+}
 
 class ChuangmiPTZCard extends HTMLElement {
   constructor() {
@@ -24,7 +86,7 @@ class ChuangmiPTZCard extends HTMLElement {
 
   setConfig(config) {
     if (!config) {
-      throw new Error("Invalid configuration");
+      throw new Error('Invalid configuration');
     }
     this._config = { ...config };
     if (this._hass) {
@@ -52,7 +114,9 @@ class ChuangmiPTZCard extends HTMLElement {
           if (
             attrs.brand === 'Chuangmi Liberator WebRTC' ||
             (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
-            attrs.did
+            attrs.did ||
+            eid.includes('camera_entrada_camera_') ||
+            eid.includes('camara_portable')
           ) {
             defaultCam = eid;
             break;
@@ -62,9 +126,9 @@ class ChuangmiPTZCard extends HTMLElement {
     }
 
     return {
-      type: "custom:chuangmi-ptz-card",
+      type: 'custom:chuangmi-ptz-card',
       camera_entity: defaultCam,
-      title: ""
+      title: ''
     };
   }
 
@@ -79,7 +143,6 @@ class ChuangmiPTZCard extends HTMLElement {
         return `chuangmi_${attrs.did}`;
       }
     }
-    // Fallback: extract digits if present in entity_id
     const match = camEntity.match(/\d{8,10}/);
     if (match) {
       return `chuangmi_${match[0]}`;
@@ -96,7 +159,6 @@ class ChuangmiPTZCard extends HTMLElement {
     const attrs = camState.attributes || {};
     const did = attrs.did || (camEntity.match(/\d{8,10}/) ? camEntity.match(/\d{8,10}/)[0] : '');
 
-    // Search matching controls for this camera
     const found = {
       ptz_up: '',
       ptz_down: '',
@@ -109,7 +171,6 @@ class ChuangmiPTZCard extends HTMLElement {
 
     const states = this._hass.states;
     for (const [eid, s] of Object.entries(states)) {
-      // Check by DID match in entity_id
       const matchesDid = did ? eid.includes(did) : false;
       const lower = eid.toLowerCase();
 
@@ -137,12 +198,12 @@ class ChuangmiPTZCard extends HTMLElement {
 
   _callButton(entityId) {
     if (!this._hass || !entityId) return;
-    this._hass.callService("button", "press", { entity_id: entityId });
+    this._hass.callService('button', 'press', { entity_id: entityId });
   }
 
   _callSwitch(entityId) {
     if (!this._hass || !entityId) return;
-    this._hass.callService("switch", "toggle", { entity_id: entityId });
+    this._hass.callService('switch', 'toggle', { entity_id: entityId });
   }
 
   _cycleNightMode(entityId) {
@@ -150,10 +211,11 @@ class ChuangmiPTZCard extends HTMLElement {
     const current = this._hass.states[entityId]?.state || 'auto';
     const cycle = { 'auto': 'always_on', 'always_on': 'off', 'off': 'auto' };
     const next = cycle[current] || 'auto';
-    this._hass.callService("select", "select_option", { entity_id: entityId, option: next });
+    this._hass.callService('select', 'select_option', { entity_id: entityId, option: next });
   }
 
   async _toggleMicrophone() {
+    const i18n = getCardI18n(this._hass);
     const centerBtn = this.shadowRoot.getElementById('btnCenter');
     const label = this.shadowRoot.getElementById('centerLabel');
 
@@ -169,16 +231,15 @@ class ChuangmiPTZCard extends HTMLElement {
         this._micAudioTrack = this._micStream.getAudioTracks()[0];
         this._isTalking = true;
         if (centerBtn) centerBtn.classList.add('talking');
-        if (label) label.innerText = 'HABLANDO...';
+        if (label) label.innerText = i18n.talking;
 
-        // Direct WebRTC audio broadcast to go2rtc
         const streamName = this._resolveStreamName(this._config.camera_entity);
         if (streamName && window.RTCPeerConnection) {
           this._startWebRTCAudioPush(streamName);
         }
       } catch (err) {
-        console.warn("Microphone access error:", err);
-        alert("Permiso de micrófono no concedido en el navegador: " + err.message);
+        console.warn('Microphone access error:', err);
+        alert('Microphone access permission error: ' + err.message);
       }
     } else {
       if (this._micStream) {
@@ -192,7 +253,7 @@ class ChuangmiPTZCard extends HTMLElement {
       }
       this._isTalking = false;
       if (centerBtn) centerBtn.classList.remove('talking');
-      if (label) label.innerText = 'HABLAR';
+      if (label) label.innerText = i18n.talk;
     }
   }
 
@@ -221,16 +282,15 @@ class ChuangmiPTZCard extends HTMLElement {
         await pc.setRemoteDescription({ type: 'answer', sdp: answer });
       }
     } catch (e) {
-      console.debug("WebRTC audio backchannel negotiation:", e);
+      console.debug('WebRTC audio backchannel negotiation:', e);
     }
   }
 
   _render() {
-    const title = this._config.title || (
-      this._hass && this._config.camera_entity && this._hass.states[this._config.camera_entity]
-        ? this._hass.states[this._config.camera_entity].attributes.friendly_name || 'Cámara Chuangmi 2K'
-        : 'Cámara Chuangmi PTZ'
-    );
+    const i18n = getCardI18n(this._hass);
+    const camState = this._hass && this._config.camera_entity ? this._hass.states[this._config.camera_entity] : null;
+    const cleanName = camState ? cleanCameraLabel(camState.attributes.friendly_name) : '';
+    const title = this._config.title || cleanName || i18n.default_title;
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -266,137 +326,112 @@ class ChuangmiPTZCard extends HTMLElement {
           background: rgba(16, 185, 129, 0.15);
           color: #10b981;
           font-size: 0.7rem;
-          font-weight: 700;
+          font-weight: 800;
           padding: 3px 8px;
-          border-radius: 20px;
-          letter-spacing: 0.6px;
-          border: 1px solid rgba(16, 185, 129, 0.35);
-          text-transform: uppercase;
+          border-radius: 6px;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          letter-spacing: 0.5px;
         }
         .video-container {
           position: relative;
           width: 100%;
-          aspect-ratio: 16 / 9;
+          min-height: 220px;
           background: #000;
-          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
-        webrtc-camera {
+        .video-container webrtc-camera {
           width: 100%;
           height: 100%;
           display: block;
         }
         .controls-panel {
-          padding: 20px 16px 14px 16px;
+          padding: 16px 12px 14px 12px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 18px;
-          background: #14171d;
+          gap: 16px;
+          background: #13161c;
         }
-        /* CIRCULAR PTZ DPAD */
         .ptz-circle {
           position: relative;
-          width: 210px;
-          height: 210px;
-          background: radial-gradient(circle, #222731 0%, #161920 100%);
+          width: 180px;
+          height: 180px;
           border-radius: 50%;
-          border: 2px solid rgba(255, 255, 255, 0.07);
-          box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4);
+          background: radial-gradient(circle, #1a202c 0%, #0f131a 100%);
+          box-shadow: inset 0 2px 5px rgba(255,255,255,0.06), 0 8px 24px rgba(0,0,0,0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .dpad-btn {
           position: absolute;
           background: transparent;
           border: none;
           color: #94a3b8;
+          cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
+          transition: all 0.15s ease;
+          border-radius: 50%;
           outline: none;
-          transition: transform 0.08s ease, color 0.1s ease;
-          padding: 0;
-          margin: 0;
-          -webkit-tap-highlight-color: transparent;
+        }
+        .dpad-btn:hover {
+          color: #10b981;
+          transform: scale(1.15);
         }
         .dpad-btn:active {
-          transform: scale(0.92);
-          color: #10b981;
+          transform: scale(0.95);
+          color: #34d399;
         }
-        .dpad-btn svg {
-          filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-        }
-        .btn-up {
-          top: 8px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 60px;
-          height: 50px;
-        }
-        .btn-down {
-          bottom: 8px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 60px;
-          height: 50px;
-        }
-        .btn-left {
-          left: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 50px;
-          height: 60px;
-        }
-        .btn-right {
-          right: 8px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 50px;
-          height: 60px;
-        }
-        /* CENTER MICROPHONE INTERCOM */
+        .btn-up    { top: 6px;  left: 50%; transform: translateX(-50%); width: 44px; height: 38px; }
+        .btn-down  { bottom: 6px; left: 50%; transform: translateX(-50%); width: 44px; height: 38px; }
+        .btn-left  { left: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 44px; }
+        .btn-right { right: 6px; top: 50%; transform: translateY(-50%); width: 38px; height: 44px; }
+
         .btn-center {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 76px;
-          height: 76px;
+          width: 72px;
+          height: 72px;
           border-radius: 50%;
           background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          border: 3px solid #14171d;
-          box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
-          color: white;
+          border: 3px solid #101216;
+          color: #ffffff;
+          box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+          cursor: pointer;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
+          gap: 2px;
+          transition: all 0.2s ease;
           outline: none;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          z-index: 10;
+          z-index: 2;
         }
         .btn-center:hover {
-          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55);
+          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+          transform: scale(1.05);
         }
-        .btn-center:active, .btn-center.talking {
+        .btn-center:active {
+          transform: scale(0.95);
+        }
+        .btn-center.talking {
           background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
           box-shadow: 0 0 25px rgba(239, 68, 68, 0.8);
-          transform: translate(-50%, -50%) scale(0.96);
-          animation: pulse-talking 1.4s infinite;
+          animation: pulse-talking 1.5s infinite;
         }
         @keyframes pulse-talking {
           0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+          70% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
           100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
         .center-label {
-          font-size: 0.62rem;
+          font-size: 0.58rem;
           font-weight: 800;
           letter-spacing: 0.5px;
-          margin-top: 2px;
-          text-transform: uppercase;
         }
-        /* BOTTOM 3-ACTION BAR */
         .action-bar {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -450,62 +485,62 @@ class ChuangmiPTZCard extends HTMLElement {
             </svg>
             <span id="cardTitle">${title}</span>
           </div>
-          <div class="badge">2K WEBRTC</div>
+          <div class="badge">${i18n.badge}</div>
         </div>
 
         <div class="video-container" id="videoContainer"></div>
 
         <div class="controls-panel">
           <div class="ptz-circle">
-            <button class="dpad-btn btn-up" id="btnUp" title="Arriba">
+            <button class="dpad-btn btn-up" id="btnUp" title="${i18n.up}">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
                 <path d="M7.41,15.41L12,10.83L16.59,15.41L18,14L12,8L6,14L7.41,15.41Z"/>
               </svg>
             </button>
-            <button class="dpad-btn btn-left" id="btnLeft" title="Izquierda">
+            <button class="dpad-btn btn-left" id="btnLeft" title="${i18n.left}">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
                 <path d="M15.41,16.59L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.59Z"/>
               </svg>
             </button>
 
             <!-- CENTER BUTTON: TWO-WAY INTERCOM / MICROPHONE -->
-            <button class="btn-center" id="btnCenter" title="Pulsar para hablar">
+            <button class="btn-center" id="btnCenter" title="${i18n.talk_tooltip}">
               <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
                 <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
               </svg>
-              <span class="center-label" id="centerLabel">HABLAR</span>
+              <span class="center-label" id="centerLabel">${i18n.talk}</span>
             </button>
 
-            <button class="dpad-btn btn-right" id="btnRight" title="Derecha">
+            <button class="dpad-btn btn-right" id="btnRight" title="${i18n.right}">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
                 <path d="M8.59,16.59L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.59Z"/>
               </svg>
             </button>
-            <button class="dpad-btn btn-down" id="btnDown" title="Abajo">
+            <button class="dpad-btn btn-down" id="btnDown" title="${i18n.down}">
               <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor">
                 <path d="M7.41,8.59L12,13.17L16.59,8.59L18,10L12,16L6,10L7.41,8.59Z"/>
               </svg>
             </button>
           </div>
 
-          <!-- Bottom Action Bar: ONLY Invertir cámara, Modo noche, Modo privacidad -->
+          <!-- Bottom Action Bar: Flip, Night Mode, Privacy -->
           <div class="action-bar">
             <!-- 1. Invertir Cámara (Flip 180°) -->
-            <button class="action-btn" id="btnFlip" title="Invertir imagen 180°">
+            <button class="action-btn" id="btnFlip" title="${i18n.flip_tooltip}">
               <svg viewBox="0 0 24 24"><path d="M19,7H16V9H19A3,3 0 0,1 22,12A3,3 0 0,1 19,15H16V17H19A5,5 0 0,0 24,12A5,5 0 0,0 19,7M5,7A5,5 0 0,0 0,12A5,5 0 0,0 5,17H8V15H5A3,3 0 0,1 2,12A3,3 0 0,1 5,9H8V7H5M7,11H17V13H7V11Z"/></svg>
-              <span>Invertir</span>
+              <span>${i18n.flip}</span>
             </button>
 
             <!-- 2. Modo Noche (Night Vision) -->
-            <button class="action-btn" id="btnNight" title="Modo Noche / Visión Nocturna">
+            <button class="action-btn" id="btnNight" title="${i18n.night_tooltip}">
               <svg viewBox="0 0 24 24"><path d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.84 4.94,4.94C7.77,2.1 11.83,1.38 15.34,3.14C16.15,3.55 16.03,4.68 15.17,4.88C11.8,5.65 9.29,8.68 9.29,12.35C9.29,16.42 12.58,19.71 16.65,19.71C17.47,19.71 18.25,19.57 18.97,19.32V15.95Z"/></svg>
-              <span>Modo Noche</span>
+              <span>${i18n.night}</span>
             </button>
 
             <!-- 3. Modo Privacidad (Reposo / Apagado) -->
-            <button class="action-btn" id="btnSleep" title="Modo Privacidad (Reposo / Apagado)">
+            <button class="action-btn" id="btnSleep" title="${i18n.privacy_tooltip}">
               <svg viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,5A3,3 0 0,1 15,8A3,3 0 0,1 12,11A3,3 0 0,1 9,8A3,3 0 0,1 12,5M17.13,17C15.92,18.85 14.11,20.24 12,20.92C9.89,20.24 8.08,18.85 6.87,17C6.53,16.5 6.24,16 6,15.47C6,13.82 8.71,12.47 12,12.47C15.29,12.47 18,13.82 18,15.47C17.76,16 17.47,16.5 17.13,17Z"/></svg>
-              <span>Privacidad</span>
+              <span>${i18n.privacy}</span>
             </button>
           </div>
         </div>
@@ -577,33 +612,49 @@ class ChuangmiPTZCard extends HTMLElement {
 
 /**
  * Visual Configuration Editor for Chuangmi PTZ Card
- * Features strict filtering of Chuangmi Liberator cameras
+ * Features robust DOM persistence to avoid dropdown closing glitches,
+ * along with clean labels and full internationalization.
  */
 class ChuangmiPTZCardEditor extends HTMLElement {
   constructor() {
     super();
     this._hass = null;
     this._config = {};
+    this._rendered = false;
+    this._lastCameraListStr = '';
   }
 
   setConfig(config) {
     this._config = { ...config };
-    this._render();
+    if (!this._rendered) {
+      this._render();
+    } else {
+      this._syncValues();
+    }
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    if (!this._rendered) {
+      this._render();
+    } else {
+      this._syncOptions();
+    }
   }
 
-  _render() {
-    if (!this._hass) return;
-    this.innerHTML = '';
+  _syncValues() {
+    const titleInput = this.querySelector('#cfgTitle');
+    if (titleInput && titleInput.value !== (this._config.title || '')) {
+      titleInput.value = this._config.title || '';
+    }
+    const entitySelect = this.querySelector('#cfgEntity');
+    if (entitySelect && this._config.camera_entity && entitySelect.value !== this._config.camera_entity) {
+      entitySelect.value = this._config.camera_entity;
+    }
+  }
 
-    const container = document.createElement('div');
-    container.style.cssText = 'display: flex; flex-direction: column; gap: 16px; padding: 12px 0;';
-
-    // 1. Strict filter of Chuangmi Liberator cameras
+  _getCameras() {
+    if (!this._hass || !this._hass.states) return [];
     const chuangmiCameras = [];
     for (const [eid, state] of Object.entries(this._hass.states)) {
       if (eid.startsWith('camera.')) {
@@ -613,54 +664,86 @@ class ChuangmiPTZCardEditor extends HTMLElement {
           (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
           attrs.did ||
           eid.includes('camera_entrada_camera_') ||
-          eid.includes('camara_portable_live_camera')
+          eid.includes('camara_portable')
         );
 
         if (isChuangmi) {
+          const cleanName = cleanCameraLabel(attrs.friendly_name || eid);
           chuangmiCameras.push({
             value: eid,
-            label: `${attrs.friendly_name || eid} (${eid})`
+            label: `${cleanName} (${eid})`
           });
         }
       }
     }
 
-    // Fallback if none detected yet: scan all cameras except excluded ones
     if (chuangmiCameras.length === 0) {
       for (const [eid, state] of Object.entries(this._hass.states)) {
         if (eid.startsWith('camera.') && !eid.includes('comedor') && !eid.includes('oukitel')) {
+          const cleanName = cleanCameraLabel(state.attributes.friendly_name || eid);
           chuangmiCameras.push({
             value: eid,
-            label: `${state.attributes.friendly_name || eid} (${eid})`
+            label: `${cleanName} (${eid})`
           });
         }
       }
     }
+    return chuangmiCameras;
+  }
 
-    const currentEntity = this._config.camera_entity || (chuangmiCameras[0] ? chuangmiCameras[0].value : '');
+  _syncOptions() {
+    const cameras = this._getCameras();
+    const camStr = cameras.map(c => c.value).join('|');
+    if (camStr === this._lastCameraListStr) {
+      return; // No entity change, do not touch DOM!
+    }
+    this._lastCameraListStr = camStr;
 
-    // Title input
+    const select = this.querySelector('#cfgEntity');
+    if (!select) return;
+
+    const currentVal = select.value || this._config.camera_entity || (cameras[0] ? cameras[0].value : '');
+    select.innerHTML = cameras.map(cam => `
+      <option value="${cam.value}" ${cam.value === currentVal ? 'selected' : ''}>${cam.label}</option>
+    `).join('');
+    select.value = currentVal;
+  }
+
+  _render() {
+    if (!this._hass) return;
+
+    const i18n = getCardI18n(this._hass);
+    const cameras = this._getCameras();
+    this._lastCameraListStr = cameras.map(c => c.value).join('|');
+
+    const currentEntity = this._config.camera_entity || (cameras[0] ? cameras[0].value : '');
+
+    this.innerHTML = '';
+    const container = document.createElement('div');
+    container.style.cssText = 'display: flex; flex-direction: column; gap: 16px; padding: 12px 0;';
+
+    // 1. Title input
     const titleBox = document.createElement('div');
     titleBox.innerHTML = `
-      <label style="display:block; font-weight:600; margin-bottom:6px; color:var(--primary-text-color);">Título de la tarjeta:</label>
-      <input type="text" id="cfgTitle" value="${this._config.title || ''}" placeholder="Cámara Entrada (2K PTZ)"
+      <label style="display:block; font-weight:600; margin-bottom:6px; color:var(--primary-text-color);">${i18n.editor_title}</label>
+      <input type="text" id="cfgTitle" value="${this._config.title || ''}" placeholder="${i18n.editor_title_placeholder}"
         style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); box-sizing: border-box;" />
     `;
     container.appendChild(titleBox);
 
-    // Camera Selector Dropdown
+    // 2. Camera Selector Dropdown
     const selectorBox = document.createElement('div');
-    const optionsHtml = chuangmiCameras.map(cam => `
+    const optionsHtml = cameras.map(cam => `
       <option value="${cam.value}" ${cam.value === currentEntity ? 'selected' : ''}>${cam.label}</option>
     `).join('');
 
     selectorBox.innerHTML = `
-      <label style="display:block; font-weight:600; margin-bottom:6px; color:var(--primary-text-color);">Seleccionar Cámara Chuangmi / Xiaomi:</label>
+      <label style="display:block; font-weight:600; margin-bottom:6px; color:var(--primary-text-color);">${i18n.editor_select_camera}</label>
       <select id="cfgEntity" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); box-sizing: border-box; cursor: pointer;">
         ${optionsHtml}
       </select>
       <small style="display:block; margin-top:6px; color:var(--secondary-text-color);">
-        ✨ Detección automática: la cruceta PTZ, el micrófono bidireccional y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.
+        ${i18n.editor_helper}
       </small>
     `;
     container.appendChild(selectorBox);
@@ -687,6 +770,7 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     selectorBox.querySelector('#cfgEntity').addEventListener('change', updateConfig);
 
     this.appendChild(container);
+    this._rendered = true;
   }
 }
 
@@ -695,8 +779,9 @@ ChuangmiPTZCard.getConfigElement = () => document.createElement('chuangmi-ptz-ca
 
 customElements.define('chuangmi-ptz-card', ChuangmiPTZCard);
 
-// Register in Home Assistant Card Picker ("Add to dashboard")
+// Register in Home Assistant Card Picker
 window.customCards = window.customCards || [];
+window.customCards = window.customCards.filter(c => c.type !== 'chuangmi-ptz-card');
 window.customCards.push({
   type: 'chuangmi-ptz-card',
   name: 'Chuangmi PTZ Camera Card',
@@ -706,7 +791,7 @@ window.customCards.push({
 });
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.0.0 REPO RELEASE & DYNAMIC ZERO-CONFIG ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.0 DYNAMIC ZERO-CONFIG & I18N ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

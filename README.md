@@ -105,20 +105,23 @@ These cameras use Xiaomi ecosystem firmware with potential MISS/RTSP streaming s
 
 ---
 
-## 📦 Installation
+## 📦 Installation via HACS
 
-### Option 1: HACS (Recommended)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=VictorCV-DAM&repository=ha-chuangmi-liberator-webrtc&category=integration)
 
-1. Open **HACS** in your Home Assistant dashboard.
-2. Click the three dots in the top right corner and select **Custom repositories**.
+### ⚡ 1-Click Fast Install
+Click the badge above to open **Chuangmi Liberator WebRTC** directly inside your Home Assistant HACS store, then click **Download**.
+
+### 🛠️ Manual Custom Repository Setup
+1. Open **HACS** in your Home Assistant sidebar.
+2. Click the three dots (top right corner) and select **Custom repositories**.
 3. Paste the repository URL:  
    `https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc`
 4. Set category to **Integration** and click **Add**.
-5. Search for **Chuangmi Liberator WebRTC** and click **Download**.
-6. Restart Home Assistant.
+5. Find **Chuangmi Liberator WebRTC** in the list and click **Download**.
+6. Restart Home Assistant (*Settings > System > Restart*).
 
-### Option 2: Manual Installation
-
+### 📁 Manual Installation (Without HACS)
 1. Download the latest release `chuangmi_liberator.zip` from [Releases](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases).
 2. Extract the `chuangmi_liberator` directory into your Home Assistant `/config/custom_components/` directory:
    ```
@@ -134,14 +137,20 @@ These cameras use Xiaomi ecosystem firmware with potential MISS/RTSP streaming s
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Configuration & 1-Click Setup
 
-1. In Home Assistant, navigate to **Settings** -> **Devices & Services** -> **Add Integration**.
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=chuangmi_liberator)
+
+### ⚡ 1-Click Integration Add
+Click the badge above to launch the configuration flow directly inside your Home Assistant instance.
+
+### 🛠️ Manual Configuration Steps:
+1. In Home Assistant, navigate to **Settings** ➔ **Devices & Services** ➔ **Add Integration**.
 2. Search for **Chuangmi Liberator WebRTC**.
 3. Choose your setup mode:
-   - **Local Auto-Detection:** Leave username and password blank and submit to detect cameras already cached in your Home Assistant network.
-   - **Xiaomi Cloud Login:** Enter your Xiaomi Mi Home credentials and region (`de`, `cn`, `us`) to automatically discover and extract tokens for all cameras in your account.
-   - **Manual Setup:** Provide Device ID (DID), local IP, 32-character token, and model identifier.
+   - **Local Auto-Detection:** Leave username and password blank and click **Submit**. The integration will automatically discover and configure your cameras from Home Assistant local network cache without cloud authentication.
+   - **Xiaomi Cloud Login:** Enter your Xiaomi Mi Home account credentials and server region (`de` = Europe, `cn` = China, `us` = United States) to automatically extract tokens and discover all cameras in your account.
+   - **Manual Setup:** Provide your Camera Device ID (DID), local IP, 32-character miIO token, and hardware model.
 
 ---
 

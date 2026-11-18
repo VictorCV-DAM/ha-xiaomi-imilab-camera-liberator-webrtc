@@ -64,21 +64,51 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 
 ---
 
-## 📸 Lovelace PTZ Card
+## 📸 Lovelace PTZ Card (`chuangmi-ptz-card`)
 
-The integration bundles a dedicated custom card that registers automatically in Home Assistant:
+The integration includes a dedicated, highly customizable Lovelace card with both a full PTZ control interface and an edge-to-edge minimalist collapsed mode:
 
-<p align="center">
-  <img src="images/screenshot_card_full.jpg" width="46%" alt="Lovelace PTZ Card - 2K WebRTC Live & PTZ Controls">
-  &nbsp;&nbsp;
-  <img src="images/screenshot_card_collapsed.jpg" width="46%" alt="Lovelace PTZ Card - Minimal Edge-to-Edge Stream">
-</p>
+<div align="center">
+  <p align="center">
+    <img src="images/screenshot_card_full.jpg" width="46%" alt="Lovelace PTZ Card - 2K WebRTC Live & PTZ Controls" style="display:inline-block; margin: 4px; border-radius: 8px;">
+    &nbsp;&nbsp;
+    <img src="images/screenshot_card_collapsed.jpg" width="46%" alt="Lovelace PTZ Card - Minimal Edge-to-Edge Stream" style="display:inline-block; margin: 4px; border-radius: 8px;">
+  </p>
+</div>
+
+### 🖱️ 100% GUI Setup via Pre-Made Card Picker (Zero YAML Required)
+
+You do **not** need to write or copy any manual YAML code! The integration automatically registers `chuangmi-ptz-card` into Home Assistant's native dashboard card selector:
+
+<div align="center">
+  <p align="center">
+    <img src="images/screenshot_card_picker.jpg" width="85%" alt="Add to Dashboard Card Picker - Pre-made Card with Live Preview" style="border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin: 10px auto;">
+  </p>
+</div>
+
+1. Open any Home Assistant dashboard, click the **three dots `⋮`** (top right) ➔ **Edit Dashboard**.
+2. Click **+ Add Card** at the bottom.
+3. Switch to the **By card** tab and search for `"Chuangmi"` or `"Xiaomi"`.
+4. Click on **Cámara Chuangmi PTZ** in the pre-made cards list.
+5. **✨ Automatic Entity Discovery & Binding:** Pick your camera from the dropdown menu in the interactive visual editor. The card automatically detects and connects:
+   - Live WebRTC 2K video stream
+   - Tactile PTZ directional D-pad
+   - In-browser live recording button
+   - 180° image inversion toggle
+   - 3-state Night Vision IR switcher
+   - Sleep / Privacy standby switch
+
+<details>
+<summary><strong>⚙️ Advanced Manual YAML Configuration (Optional)</strong></summary>
+
+For custom dashboards or advanced YAML mode, you can also define the card manually:
 
 ```yaml
 type: custom:chuangmi-ptz-card
 camera_entity: camera.camera_entrada_camera_123456789
 title: Front Entrance (2K PTZ)
 ```
+</details>
 
 ### Card Features:
 | Feature | Description |
@@ -91,43 +121,46 @@ title: Front Entrance (2K PTZ)
 | **Night Vision** | Cycle through Auto, Night Vision, and Off |
 | **Privacy Mode** | Instant local sleep / standby mode |
 | **Header More-Info** | Tap the title to open native device settings and controls |
+| **Pre-Made Card Picker** | Add directly from Home Assistant's visual GUI card library |
 
 ---
 
 ## 🖼️ Screenshots & Real-World UI
 
-<table align="center">
-  <tr>
-    <td align="center" width="50%">
-      <strong>Multi-Device Fleet & Entities (v1.1.0)</strong><br>
-      <img src="images/screenshot_integration_overview.png" alt="Integration Overview v1.1.0">
+<div align="center">
+<table align="center" style="margin: 0 auto; text-align: center; border-collapse: collapse;">
+  <tr align="center">
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Multi-Device Fleet & Entities (v1.1.0)</strong><br><br>
+      <img src="images/screenshot_integration_overview.png" alt="Integration Overview v1.1.0" style="border-radius: 8px; max-width: 100%;">
     </td>
-    <td align="center" width="50%">
-      <strong>15+ Onboard Hardware Controls & Diagnostics</strong><br>
-      <img src="images/screenshot_device_controls.jpg" alt="Device Controls and Diagnostics">
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="50%">
-      <strong>Automatic Local Fleet Discovery</strong><br>
-      <img src="images/screenshot_discovery_selection.jpg" alt="Automatic Camera Discovery">
-    </td>
-    <td align="center" width="50%">
-      <strong>Port Isolation & go2rtc Coexistence</strong><br>
-      <img src="images/screenshot_options_coexistence.png" alt="Port Coexistence Options">
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>15+ Onboard Hardware Controls & Diagnostics</strong><br><br>
+      <img src="images/screenshot_device_controls.jpg" alt="Device Controls and Diagnostics" style="border-radius: 8px; max-width: 100%;">
     </td>
   </tr>
-  <tr>
-    <td align="center" width="50%">
-      <strong>Brand Search in Home Assistant</strong><br>
-      <img src="images/screenshot_brand_search.png" alt="Brand Search">
+  <tr align="center">
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Automatic Local Fleet Discovery</strong><br><br>
+      <img src="images/screenshot_discovery_selection.jpg" alt="Automatic Camera Discovery" style="border-radius: 8px; max-width: 100%;">
     </td>
-    <td align="center" width="50%">
-      <strong>Lovelace Card Picker in Dashboard</strong><br>
-      <img src="images/screenshot_card_picker.jpg" alt="Dashboard Card Picker">
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Port Isolation & go2rtc Coexistence</strong><br><br>
+      <img src="images/screenshot_options_coexistence.png" alt="Port Coexistence Options" style="border-radius: 8px; max-width: 100%;">
+    </td>
+  </tr>
+  <tr align="center">
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Brand Search in Home Assistant</strong><br><br>
+      <img src="images/screenshot_brand_search.png" alt="Brand Search" style="border-radius: 8px; max-width: 100%;">
+    </td>
+    <td align="center" width="50%" style="padding: 12px; text-align: center;">
+      <strong>Lovelace Pre-Made Card Picker</strong><br><br>
+      <img src="images/screenshot_card_picker.jpg" alt="Dashboard Card Picker" style="border-radius: 8px; max-width: 100%;">
     </td>
   </tr>
 </table>
+</div>
 
 ---
 

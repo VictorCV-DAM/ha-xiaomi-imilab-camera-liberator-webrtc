@@ -29,6 +29,24 @@
 
 ---
 
+## 📦 Installation via HACS
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=VictorCV-DAM&repository=ha-xiaomi-imilab-camera-liberator-webrtc&category=integration)
+
+### ⚡ 1-Click Fast Install
+Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** directly inside your Home Assistant HACS store, then click **Download**.
+
+### 🛠️ Manual Custom Repository Setup
+1. Open **HACS** in your Home Assistant sidebar.
+2. Click the three dots (top right corner) and select **Custom repositories**.
+3. Paste the repository URL:  
+   `https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc`
+4. Set category to **Integration** and click **Add**.
+5. Find **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** in the list and click **Download**.
+6. Restart Home Assistant (*Settings > System > Restart*).
+
+---
+
 ## ⚡ Highlights & Key Features
 
 - **⚡ Zero-Lag WebRTC Streaming (&lt;200ms):** Eliminates the annoying 2–5 second cloud latency and buffering of traditional HLS/RTSP streams. Streams directly via hardware-accelerated `go2rtc` and WebSocket peer negotiation.
@@ -115,38 +133,6 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 | `isa.camera.hlc7` | Xiaomi Smart Camera PTZ Pro | 2K | Dome PTZ | Isaac firmware variant |
 
 > 💡 **Have a different model?** If you have tested another Chuangmi, Imilab, or Xiaomi camera model with this integration, please [open a GitHub Issue](https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc/issues) to report your results and help expand the verified list!
-
----
-
-## 📦 Installation via HACS
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=VictorCV-DAM&repository=ha-xiaomi-imilab-camera-liberator-webrtc&category=integration)
-
-### ⚡ 1-Click Fast Install
-Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** directly inside your Home Assistant HACS store, then click **Download**.
-
-### 🛠️ Manual Custom Repository Setup
-1. Open **HACS** in your Home Assistant sidebar.
-2. Click the three dots (top right corner) and select **Custom repositories**.
-3. Paste the repository URL:  
-   `https://github.com/VictorCV-DAM/ha-xiaomi-imilab-camera-liberator-webrtc`
-4. Set category to **Integration** and click **Add**.
-5. Find **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)** in the list and click **Download**.
-6. Restart Home Assistant (*Settings > System > Restart*).
-
----
-
-## ⚙️ Configuration & 1-Click Setup
-
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=chuangmi_liberator)
-
-### ⚡ 1-Click Integration Add
-Click the badge above to launch the configuration flow directly inside your Home Assistant instance.
-
-### 🛠️ Configuration Options:
-- **Local Auto-Detection (Recommended):** Leave username and password blank and click **Submit**. The integration will automatically discover and configure your cameras from Home Assistant local network cache without cloud authentication.
-- **Xiaomi Cloud Login:** Enter your Xiaomi Mi Home account credentials and server region (`de` = Europe, `cn` = China, `us` = United States) to automatically extract tokens and discover all cameras in your account.
-- **Manual Setup:** Provide your Camera Device ID (DID), local IP, 32-character miIO token, and hardware model.
 
 ---
 

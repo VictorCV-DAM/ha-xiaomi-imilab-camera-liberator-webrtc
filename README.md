@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/icon_512.png" width="150" height="150" alt="Xiaomi & Imilab Camera Liberator (WebRTC & PTZ) Icon" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+  <img src="images/social_preview.png" width="100%" alt="Xiaomi & Imilab Camera Liberator (WebRTC & PTZ) Banner" style="border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
 </p>
 
 <div align="center">

@@ -48,6 +48,12 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.CAMERA, Platform.SWITCH, Platform.SELECT, Platform.BUTTON]
 CARD_URL = "/chuangmi_liberator/chuangmi-ptz-card.js"
+CARD_VERSION = "1.6.2"
+
+try:
+    from homeassistant.components.frontend import add_extra_js_url
+except (ImportError, AttributeError):
+    add_extra_js_url = None
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:
@@ -61,24 +67,44 @@ async def _async_register_card(hass: HomeAssistant) -> None:
         except Exception:
             pass
 
-    lovelace = hass.data.get("lovelace")
-    resources = getattr(lovelace, "resources", None) or (
-        lovelace.get("resources") if isinstance(lovelace, dict) else None
-    )
-    if resources is not None and hasattr(resources, "async_create_item"):
+    full_url = f"{CARD_URL}?v={CARD_VERSION}"
+
+    # Global frontend injection so the card is discovered by the card picker in all dashboards
+    if add_extra_js_url:
         try:
+            add_extra_js_url(hass, full_url)
+        except Exception as err:
+            _LOGGER.debug("Could not add extra JS URL: %s", err)
+
+    # Register or update Lovelace resource
+    try:
+        lovelace_data = hass.data.get("lovelace")
+        resources = getattr(lovelace_data, "resources", None) if lovelace_data else None
+        if resources is not None:
             if not getattr(resources, "loaded", True):
                 await resources.async_load()
                 resources.loaded = True
 
-            found = any(
-                item.get("url", "").startswith(CARD_URL) or "chuangmi-ptz-card" in item.get("url", "")
-                for item in resources.async_items()
-            )
-            if not found:
-                await resources.async_create_item({"res_type": "module", "url": f"{CARD_URL}?v=1.0.0"})
-        except Exception as err:
-            _LOGGER.debug("Could not auto-register Lovelace resource: %s", err)
+            existing_item = None
+            for item in getattr(resources, "async_items", lambda: [])():
+                url = item.get("url", "")
+                if url.startswith(CARD_URL) or "chuangmi-ptz-card" in url:
+                    existing_item = item
+                    break
+
+            if existing_item:
+                if existing_item.get("url") != full_url and hasattr(resources, "async_update_item"):
+                    await resources.async_update_item(
+                        existing_item["id"],
+                        {"res_type": "module", "url": full_url}
+                    )
+            elif hasattr(resources, "async_create_item"):
+                await resources.async_create_item({
+                    "res_type": "module",
+                    "url": full_url
+                })
+    except Exception as err:
+        _LOGGER.debug("Could not auto-register Lovelace resource: %s", err)
 
 
 async def _async_discover_all_cameras(hass: HomeAssistant, client: XiaomiClient, entry: ConfigEntry) -> list:

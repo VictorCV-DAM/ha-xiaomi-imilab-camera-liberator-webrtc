@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.1)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.2)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -9,6 +9,21 @@
  *  - Full bilingual localization (English / Spanish) with auto-detection
  *  - Direct, reliable go2rtc stream binding without WebSocket proxy errors
  */
+
+// Register in Home Assistant Lovelace Card Picker immediately
+window.customCards = window.customCards || [];
+if (!window.customCards.some(c => c.type === 'chuangmi-ptz-card')) {
+  window.customCards.push({
+    type: 'chuangmi-ptz-card',
+    name: 'Cámara Chuangmi PTZ / Chuangmi PTZ Camera',
+    description: 'WebRTC 2K live stream with PTZ controls, two-way audio, and local camera controls for Chuangmi / Imilab / Xiaomi cameras. Cámara PTZ Xiaomi.',
+    preview: true,
+    documentationURL: 'https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc'
+  });
+}
+try {
+  window.dispatchEvent(new CustomEvent('custom-card-registered', { detail: 'chuangmi-ptz-card' }));
+} catch (e) {}
 
 const CARD_I18N = {
   es: {
@@ -113,7 +128,11 @@ class ChuangmiPTZCard extends HTMLElement {
       if (webrtc) {
         if (!hadHass) {
           const streamName = this._resolveStreamName(this._config.camera_entity);
-          webrtc.setConfig({ url: streamName, mode: 'webrtc' });
+          if (streamName) {
+            try {
+              webrtc.setConfig({ url: streamName, mode: 'webrtc' });
+            } catch (e) {}
+          }
         }
         webrtc.hass = hass;
       }
@@ -585,15 +604,28 @@ class ChuangmiPTZCard extends HTMLElement {
     // Embed WebRTC element - strictly passing url without entity to force direct go2rtc WebRTC routing
     const container = this.shadowRoot.getElementById('videoContainer');
     container.innerHTML = '';
-    const webrtc = document.createElement('webrtc-camera');
-    webrtc.setConfig({
-      url: streamName,
-      mode: 'webrtc'
-    });
-    if (this._hass) {
-      webrtc.hass = this._hass;
+    if (streamName && customElements.get('webrtc-camera')) {
+      try {
+        const webrtc = document.createElement('webrtc-camera');
+        webrtc.setConfig({
+          url: streamName,
+          mode: 'webrtc'
+        });
+        if (this._hass) {
+          webrtc.hass = this._hass;
+        }
+        container.appendChild(webrtc);
+      } catch (err) {
+        console.warn('Could not initialize webrtc-camera in card:', err);
+      }
+    } else if (!streamName) {
+      container.innerHTML = `
+        <div style="color: #71717a; font-size: 13px; text-align: center; padding: 24px;">
+          <svg style="width:36px;height:36px;opacity:0.4;display:block;margin:0 auto 8px;" viewBox="0 0 24 24"><path fill="currentColor" d="M17,10.5V7A1,1 0 0,0 16,6H4A1,1 0 0,0 3,7V17A1,1 0 0,0 4,18H16A1,1 0 0,0 17,17V13.5L21,17.5V6.5L17,10.5Z"/></svg>
+          ${isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor'}
+        </div>
+      `;
     }
-    container.appendChild(webrtc);
 
     // Event listeners for PTZ
     this.shadowRoot.getElementById('btnUp').onclick = () => this._callButton(this._discoveredEntities.ptz_up);
@@ -823,19 +855,22 @@ ChuangmiPTZCard.getConfigElement = () => document.createElement('chuangmi-ptz-ca
 
 customElements.define('chuangmi-ptz-card', ChuangmiPTZCard);
 
-// Register in Home Assistant Card Picker
+// Register in Home Assistant Card Picker (bottom safeguard)
 window.customCards = window.customCards || [];
 window.customCards = window.customCards.filter(c => c.type !== 'chuangmi-ptz-card');
 window.customCards.push({
   type: 'chuangmi-ptz-card',
-  name: 'Chuangmi PTZ Camera Card',
-  description: 'WebRTC 2K live stream with PTZ controls, two-way audio, and local camera controls for Chuangmi / Imilab cameras.',
+  name: 'Cámara Chuangmi PTZ / Chuangmi PTZ Camera',
+  description: 'WebRTC 2K live stream with PTZ controls, two-way audio, and local camera controls for Chuangmi / Imilab / Xiaomi cameras. Cámara PTZ Xiaomi.',
   preview: true,
   documentationURL: 'https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc'
 });
+try {
+  window.dispatchEvent(new CustomEvent('custom-card-registered', { detail: 'chuangmi-ptz-card' }));
+} catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.1 DIRECT-WEBRTC & CLEAN-LABELS ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.2 FULL-DISCOVERY & DIRECT-WEBRTC ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

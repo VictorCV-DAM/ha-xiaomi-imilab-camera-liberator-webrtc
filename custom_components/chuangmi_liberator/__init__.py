@@ -48,7 +48,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.CAMERA, Platform.SWITCH, Platform.SELECT, Platform.BUTTON]
 CARD_URL = "/chuangmi_liberator/chuangmi-ptz-card.js"
-CARD_VERSION = "1.8.6"
+CARD_VERSION = "1.8.7"
 
 try:
     from homeassistant.components.frontend import add_extra_js_url

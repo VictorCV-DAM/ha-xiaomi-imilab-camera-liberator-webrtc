@@ -110,11 +110,14 @@ def generate_chuangmi_config(
                 stream_name
             ]
 
+    preload = {s: "" for s in streams if not s.endswith("_sd")}
+
     cfg = {
         "api": {"listen": f":{api_port}"},
         "rtsp": {"listen": f":{rtsp_port}"},
         "webrtc": {"listen": f":{webrtc_port}"},
         "log": {"level": log_level},
+        "preload": preload,
         "streams": streams,
         "xiaomi": xiaomi_creds,
     }

@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.6)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.7)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -753,6 +753,10 @@ class ChuangmiPTZCard extends HTMLElement {
       if (!video || video._hasStatusHandlers) return;
       video._hasStatusHandlers = true;
 
+      try {
+        video.controls = false;
+      } catch (_) {}
+
       const onFrameReady = () => {
         this._hideOverlay();
         if (this._statusTimer) {
@@ -765,16 +769,19 @@ class ChuangmiPTZCard extends HTMLElement {
       video.addEventListener('loadeddata', onFrameReady);
       video.addEventListener('timeupdate', () => {
         if (video.currentTime > 0) onFrameReady();
-        // Eliminate latency / lag: keep playback synced to the live edge (<0.3s)
-        try {
-          if (video.buffered && video.buffered.length > 0) {
-            const end = video.buffered.end(video.buffered.length - 1);
-            if (end - video.currentTime > 1.2) {
-              video.currentTime = end - 0.15;
-            }
-          }
-        } catch (_) {}
       });
+
+      // Immediate check if video is already ready or playing
+      if (video.readyState >= 2 || video.currentTime > 0 || (video.srcObject && video.srcObject.active)) {
+        onFrameReady();
+      }
+
+      // Safety watchdog: after 2.5 seconds, if video has srcObject, hide overlay
+      setTimeout(() => {
+        if (video.srcObject || video.currentTime > 0) {
+          onFrameReady();
+        }
+      }, 2500);
 
       video.addEventListener('error', () => {
         this._showOverlay(i18n.stream_error, false, true);
@@ -782,17 +789,17 @@ class ChuangmiPTZCard extends HTMLElement {
     };
 
     // Find video immediately or watch for attachment
-    let video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+    let video = webrtc.querySelector('video') || webrtc.shadowRoot?.querySelector('video');
     if (video) {
       attachHandlers(video);
     } else {
       const interval = setInterval(() => {
-        video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
+        video = webrtc.querySelector('video') || webrtc.shadowRoot?.querySelector('video');
         if (video) {
           attachHandlers(video);
           clearInterval(interval);
         }
-      }, 150);
+      }, 100);
       setTimeout(() => clearInterval(interval), 5000);
     }
   }
@@ -801,50 +808,25 @@ class ChuangmiPTZCard extends HTMLElement {
     if (!webrtc) return;
     const inject = () => {
       try {
-        const sr = webrtc.shadowRoot;
-        if (sr && !sr.getElementById('chuangmi-video-fix')) {
-          const style = document.createElement('style');
-          style.id = 'chuangmi-video-fix';
-          style.textContent = `
-            ha-card {
-              border: none !important;
-              border-radius: 0 !important;
-              box-shadow: none !important;
-              background: transparent !important;
-              padding: 0 !important;
-              margin: 0 !important;
-              width: 100% !important;
-              overflow: hidden !important;
-            }
-            .main, .stream {
-              padding: 0 !important;
-              margin: 0 !important;
-              width: 100% !important;
-              background: transparent !important;
-            }
-            .status {
-              display: none !important;
-            }
-            video {
-              width: 100% !important;
-              height: auto !important;
-              display: block !important;
-              border-radius: 0 !important;
-              margin: 0 !important;
-              padding: 0 !important;
-              object-fit: contain !important;
-            }
-          `;
-          sr.appendChild(style);
+        const video = webrtc.querySelector('video') || webrtc.shadowRoot?.querySelector('video');
+        if (video) {
+          video.controls = false;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'contain';
+          video.style.display = 'block';
+          video.style.pointerEvents = 'none';
         }
         const statusEl = webrtc.querySelector('.status');
         if (statusEl) statusEl.style.display = 'none';
+        const modeEl = webrtc.querySelector('.mode');
+        if (modeEl) modeEl.style.display = 'none';
       } catch (_) {}
     };
     inject();
-    setTimeout(inject, 60);
-    setTimeout(inject, 300);
-    setTimeout(inject, 1200);
+    setTimeout(inject, 50);
+    setTimeout(inject, 250);
+    setTimeout(inject, 1000);
   }
 
   _ensureWebRTC(forceReload = false) {
@@ -885,7 +867,9 @@ class ChuangmiPTZCard extends HTMLElement {
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
-        muted: true
+        muted: true,
+        mode: 'webrtc',
+        mse: false
       });
       if (this._hass) {
         webrtc.hass = this._hass;

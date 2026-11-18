@@ -11,6 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     DOMAIN,
+    NAME,
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_SERVER_COUNTRY,
@@ -189,11 +190,9 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_CAMERAS: cameras_data
                 }
 
-                num = len(cameras_data)
-                suffix = "s" if num > 1 else ""
-                title = f"Chuangmi Liberator ({num} cámara{suffix})"
+                user_id = str(self.account_data.get(CONF_USERNAME) or "local").strip()
+                title = f"{NAME} ({user_id})" if user_id != "local" else NAME
 
-                user_id = self.account_data.get(CONF_USERNAME) or "local"
                 await self.async_set_unique_id(f"{DOMAIN}_{user_id}")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=title, data=entry_data)
@@ -243,7 +242,7 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
                 await self.async_set_unique_id(f"{DOMAIN}_{did}")
                 self._abort_if_unique_id_configured()
-                return self.async_create_entry(title=f"Camera {did}", data=entry_data)
+                return self.async_create_entry(title=f"{NAME} ({did})", data=entry_data)
 
         # Autodetect camera details from Home Assistant and local storage
         local_cams = await async_autodetect_all_cameras(self.hass)

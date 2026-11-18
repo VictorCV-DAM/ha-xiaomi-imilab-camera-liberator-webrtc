@@ -12,6 +12,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     DOMAIN,
+    NAME,
     CONF_USERNAME,
     CONF_PASSWORD,
     CONF_SERVER_COUNTRY,
@@ -187,9 +188,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     new_data = dict(entry.data)
     new_data[CONF_CAMERAS] = cameras
 
-    if cameras != entry.data.get(CONF_CAMERAS):
-        _LOGGER.info("Discovered %d Xiaomi cameras. Updating fleet...", len(cameras))
-        hass.config_entries.async_update_entry(entry, data=new_data)
+    # Ensure consistent entry title without hardcoded language suffixes
+    user_id = str(entry.data.get(CONF_USERNAME) or "").strip()
+    clean_title = f"{NAME} ({user_id})" if user_id and user_id != "local" else NAME
+    entry_title_update = {}
+    if "cámara" in entry.title.lower() or entry.title != clean_title:
+        entry_title_update["title"] = clean_title
+
+    if cameras != entry.data.get(CONF_CAMERAS) or entry_title_update:
+        _LOGGER.info("Updating fleet and entry metadata (%s)...", clean_title)
+        hass.config_entries.async_update_entry(entry, data=new_data, **entry_title_update)
 
     # Resolve configured options or autodetect free ports
     opts = entry.options

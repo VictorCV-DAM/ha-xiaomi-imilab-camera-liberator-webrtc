@@ -81,8 +81,11 @@
   },
   "entity": {
     "camera": {
+      "live_camera": {
+        "name": "Cámara en directo"
+      },
       "camera": {
-        "name": "Live Camera"
+        "name": "Cámara en directo"
       }
     },
     "switch": {

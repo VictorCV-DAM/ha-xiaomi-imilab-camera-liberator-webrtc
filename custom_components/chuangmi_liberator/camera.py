@@ -196,11 +196,6 @@ class ChuangmiLiberatorCamera(Camera):
         return self._attr_unique_id
 
     @property
-    def name(self) -> str:
-        """Return the name of the camera entity."""
-        return "Live Camera"
-
-    @property
     def use_stream_for_stills(self) -> bool:
         """Use stream snapshot for still frames."""
         return False

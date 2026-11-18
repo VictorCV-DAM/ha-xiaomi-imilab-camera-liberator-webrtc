@@ -1,7 +1,7 @@
 /**
  * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.9.1)
  * Features:
- *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
+ *  - 2K WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
  *  - Center intercom/microphone button for bidirectional audio
  *  - Clean bottom bar with 3 actions: Flip 180°, Night Mode, and Privacy Mode
@@ -1712,7 +1712,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.7.4 INSTANT WEBRTC & LOVELACE HEADER SCROLL FIX ',
+  '%c CHUANGMI-PTZ-CARD %c v1.9.1 WEBRTC & LOVELACE HEADER SCROLL FIX ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

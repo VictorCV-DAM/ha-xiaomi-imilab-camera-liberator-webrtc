@@ -19,12 +19,12 @@
 
 <p align="center">
   <strong>🔓 The Ultimate Liberation for Xiaomi, Chuangmi & Imilab Cameras in Home Assistant</strong><br>
-  <strong>Brings Full Local Control & Ultra-Low Latency 2K WebRTC to Long-Unsupported Hardware:</strong><br>
+  <strong>Brings Full Local Control & 2K WebRTC to Long-Unsupported Hardware:</strong><br>
   <strong>Xiaomi Smart Camera 2K / Imilab A1</strong> (<code>ipc019e</code> / <code>ipc019</code>) • <strong>Mijia 360° PTZ 1080P</strong> (<code>ipc009</code> / <code>xiaobai</code>) • <strong>Xiaomi C200 / C300 / C400 / C500 Pro</strong> (<code>026c02</code>, <code>046c04</code>, <code>055a01</code>, <code>069a01</code>) • <strong>Chuangmi IP v2–v6 / PTZ Pro</strong> (<code>ipc013</code>, <code>ipc020</code>–<code>022</code>) • <strong>Imilab C20 / C21 / C30</strong>
 </p>
 
 <p align="center">
-  <em>After years without native local support or RTSP firmware, this integration completely liberates a vast fleet of Xiaomi / Chuangmi / Imilab cameras with <strong>instant &lt;200ms 2K WebRTC streaming</strong>, <strong>in-card quick video recording</strong>, <strong>100% local UDP PTZ motor control</strong>, and a dedicated tactile Lovelace PTZ card — <strong>zero cloud subscriptions, zero hacking, zero cloud lag</strong>.</em>
+  <em>After years without native local support or RTSP firmware, this integration completely liberates a vast fleet of Xiaomi / Chuangmi / Imilab cameras with <strong>native 2K WebRTC streaming</strong>, <strong>in-card quick video recording</strong>, <strong>100% local UDP PTZ motor control</strong>, and a dedicated tactile Lovelace PTZ card — <strong>zero cloud subscriptions, zero hacking</strong>.</em>
 </p>
 
 ---
@@ -49,9 +49,9 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 
 ## ⚡ Highlights & Key Features
 
-- **⚡ Zero-Lag WebRTC Streaming (&lt;200ms):** Eliminates the annoying 2–5 second cloud latency and buffering of traditional HLS/RTSP streams. Streams directly via hardware-accelerated `go2rtc` and WebSocket peer negotiation.
-- **🎥 Instant In-Card Video Recording:** Center record button (`RECORD` / `GRABAR`) records live video chunks directly from the browser with an active stopwatch timer (`● RECORDING 00:00`), automatically downloading the MP4/WebM video clip upon completion while triggering the camera's local 30s storage backup.
-- **⚡ Instant Native 2K WebRTC Streaming:** Direct hardware-accelerated H.265/H.264 streaming with zero transcoding overhead and sub-second startup.
+- **⚡ Direct WebRTC Streaming:** Eliminates cloud-dependent relays. Streams directly via hardware-accelerated `go2rtc` and WebSocket peer negotiation.
+- **🎥 In-Card Video Recording:** Center record button (`RECORD` / `GRABAR`) records live video chunks directly from the browser with an active stopwatch timer (`● RECORDING 00:00`), automatically downloading the MP4/WebM video clip upon completion while triggering the camera's local 30s storage backup.
+- **⚡ Native 2K WebRTC Streaming:** Direct hardware-accelerated H.265/H.264 streaming with zero transcoding overhead.
 - **🎮 Tactile Lovelace PTZ Card (`chuangmi-ptz-card`):**
   - Responsive circular directional D-pad (Up, Down, Left, Right) with hardware gear debouncing.
   - **Ceiling / Inversion Awareness:** Pressing Up moves the camera visually upward regardless of 0° or 180° inverted ceiling mounting.
@@ -126,8 +126,8 @@ title: Front Entrance (2K PTZ)
 ### Card Features:
 | Feature | Description |
 | :--- | :--- |
-| **WebRTC 2K / HD Live** | Instant frame playback without buffering or keyframe lag |
-| **Native 2K WebRTC** | Direct hardware streaming with zero transcoding overhead and sub-second startup |
+| **WebRTC 2K Live** | Direct frame playback via go2rtc |
+| **Native 2K WebRTC** | Direct hardware streaming with zero transcoding overhead |
 | **PTZ D-Pad** | Motor commands with hardware debouncing to prevent packet collisions |
 | **Instant Video Record** | Record live video clips with real-time timer directly from your dashboard |
 | **Flip 180°** | Toggle image orientation for ceiling or upside-down mounts |
@@ -197,7 +197,7 @@ This integration communicates via the native **Xiaomi MISS / CloudRTC** streamin
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
 | `chuangmi.camera.ipc019e` | **Xiaomi Smart Camera 2K / Imilab A1 (CMSXJ19E)** | 2304x1296 (2K) | ✅ | ✅ | ✅ | **Verified Working** |
 
-> **Verification Details:** Confirmed with dual-camera live setup. Instant PTZ response, real-time WebRTC stream (&lt;200ms latency), instant video recording, night vision IR switching, and local sleep/privacy toggle all operating flawlessly.
+> **Verification Details:** Confirmed with dual-camera live setup. Local PTZ response, real-time WebRTC stream, in-card video recording, night vision IR switching, and local sleep/privacy toggle all operating reliably.
 
 ---
 
@@ -275,7 +275,7 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 +-------------------------------------------------------------+
 ```
 
-1. **Video Path:** WebRTC frames stream peer-to-peer directly between `go2rtc` and your browser/app for &lt;200ms latency. The card streams native ultra-crisp resolution directly without transcoding.
+1. **Video Path:** WebRTC frames stream directly between `go2rtc` and your browser/app. The card streams native ultra-crisp resolution directly without transcoding.
 2. **Control Path:** PTZ moves and switch commands are transmitted directly via UDP packets using miIO AES-CBC encryption without internet roundtrips.
 
 ---

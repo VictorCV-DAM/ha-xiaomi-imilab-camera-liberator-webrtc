@@ -243,7 +243,7 @@ class ChuangmiLiberatorCamera(Camera):
         return None
 
     async def stream_source(self) -> Optional[str]:
-        """Provide low-latency stream url registered in go2rtc."""
+        """Provide stream url registered in go2rtc."""
         stream_name = f"chuangmi_{self._did}"
         user_id = self._stored_user_id or "admin"
         stream_url = f"xiaomi://{user_id}:{self._country}@{self._ip}?did={self._did}&model={self._model}&subtype=0"

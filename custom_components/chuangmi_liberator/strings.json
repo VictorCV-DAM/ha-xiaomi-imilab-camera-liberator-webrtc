@@ -27,7 +27,7 @@
       },
       "manual": {
         "title": "Manual Setup and Instructions",
-        "description": "### Configuration and Liberation Instructions\n\nConfigure your Chuangmi / Xiaomi camera to enable **zero-lag live WebRTC streaming** and local UDP control.\n\n*(If your camera was already integrated via Xiaomi Miot, detected parameters were automatically filled below).* \n\n---\n#### Parameter Guide:\n- **Device ID (DID):** Numeric device identifier from Xiaomi Cloud (9-10 digits).\n- **Local IP:** IP address assigned to the camera on your local LAN (e.g. `192.168.1.50`). Enables local streaming and instant controls without cloud dependency.\n- **miIO Token (32 hex):** 32-character encryption key for local UDP control (night mode, status LED, privacy mode).\n- **Model:** Camera hardware identifier (e.g. `chuangmi.camera.ipc019e`).",
+        "description": "### Configuration and Liberation Instructions\n\nConfigure your Chuangmi / Xiaomi camera to enable **live WebRTC streaming** and local UDP control.\n\n*(If your camera was already integrated via Xiaomi Miot, detected parameters were automatically filled below).* \n\n---\n#### Parameter Guide:\n- **Device ID (DID):** Numeric device identifier from Xiaomi Cloud (9-10 digits).\n- **Local IP:** IP address assigned to the camera on your local LAN (e.g. `192.168.1.50`). Enables local streaming and local controls without cloud dependency.\n- **miIO Token (32 hex):** 32-character encryption key for local UDP control (night mode, status LED, privacy mode).\n- **Model:** Camera hardware identifier (e.g. `chuangmi.camera.ipc019e`).",
         "data": {
           "camera_did": "Device ID (DID)",
           "camera_ip": "Local IP",

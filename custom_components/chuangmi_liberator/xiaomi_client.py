@@ -178,7 +178,7 @@ class XiaomiClient:
 
         return None
 
-    # --- Local miIO direct commands (for instant zero-latency controls) ---
+    # --- Local miIO direct commands (for local network controls) ---
     _miio_sessions: Dict[str, Dict[str, Any]] = {}
 
     @classmethod

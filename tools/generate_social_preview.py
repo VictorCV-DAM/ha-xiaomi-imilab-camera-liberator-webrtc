@@ -75,12 +75,12 @@ draw.text((start_x, title_y + 56), "Camera Liberator", font=f_title_bold, fill=(
 
 # 3. Subtitle / Pitch
 sub_y = title_y + 130
-draw.text((start_x, sub_y), "Native 2K WebRTC live streaming (<200ms)", font=f_sub, fill=(226, 232, 240, 240))
-draw.text((start_x, sub_y + 28), "& ultra-responsive local UDP PTZ for Home Assistant.", font=f_sub, fill=(148, 163, 184, 230))
+draw.text((start_x, sub_y), "Native 2K WebRTC live streaming", font=f_sub, fill=(226, 232, 240, 240))
+draw.text((start_x, sub_y + 28), "& local UDP PTZ control for Home Assistant.", font=f_sub, fill=(148, 163, 184, 230))
 
 # 4. Feature Badges (2x2 grid)
 badges = [
-    ("⚡ <200ms WebRTC", "Ultra-low latency streaming"),
+    ("⚡ 2K WebRTC", "Direct hardware streaming"),
     ("🎮 100% Local PTZ", "Zero cloud UDP control"),
     ("🔒 100% Private", "No subscriptions, firewall-safe"),
     ("📦 HACS 1-Click", "Pre-made Lovelace PTZ Card")

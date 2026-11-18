@@ -58,7 +58,7 @@ def generate_chuangmi_config(
     hass: HomeAssistant,
     cameras: list,
     country: str = "de",
-    user_id: str = "6243072468",
+    user_id: Optional[str] = None,
     api_port: int = 1985,
     rtsp_port: int = 8556,
     webrtc_port: int = 8557,
@@ -90,10 +90,10 @@ def generate_chuangmi_config(
                         break
         if resolved_uid:
             user_id = resolved_uid
-        elif "6243072468" in xiaomi_creds:
-            user_id = "6243072468"
         elif xiaomi_creds:
             user_id = next(iter(xiaomi_creds.keys()))
+        else:
+            user_id = user_id or "admin"
 
     streams = {}
     for c in cameras:

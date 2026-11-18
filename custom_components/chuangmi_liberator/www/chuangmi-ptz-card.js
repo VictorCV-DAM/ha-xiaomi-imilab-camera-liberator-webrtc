@@ -46,7 +46,7 @@ const CARD_I18N = {
     left: 'Mover Izquierda',
     right: 'Mover Derecha',
     editor_title: 'Título de la tarjeta:',
-    editor_title_placeholder: 'Cámara Entrada (2K PTZ)',
+    editor_title_placeholder: 'Cámara (2K PTZ)',
     editor_select_camera: 'Seleccionar Cámara Chuangmi / Xiaomi:',
     editor_helper: '✨ Detección automática: la cruceta PTZ, el botón de grabación y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
     card_name: 'Tarjeta Cámara Chuangmi PTZ',
@@ -81,7 +81,7 @@ const CARD_I18N = {
     left: 'Move Left',
     right: 'Move Right',
     editor_title: 'Card title:',
-    editor_title_placeholder: 'Entrance Camera (2K PTZ)',
+    editor_title_placeholder: 'Camera (2K PTZ)',
     editor_select_camera: 'Select Chuangmi / Xiaomi Camera:',
     editor_helper: '✨ Automatic detection: PTZ D-pad, record button, and bottom action buttons bind automatically.',
     card_name: 'Chuangmi PTZ Camera Card',
@@ -191,6 +191,7 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _getCamDid() {
+    if (this._config?.did) return String(this._config.did);
     const camEntity = this._config?.camera_entity || '';
     if (this._hass && this._hass.states[camEntity]) {
       const attrs = this._hass.states[camEntity].attributes || {};
@@ -198,9 +199,6 @@ class ChuangmiPTZCard extends HTMLElement {
     }
     const match = camEntity.match(/\d{8,10}/);
     if (match) return match[0];
-    const lower = camEntity.toLowerCase();
-    if (lower.includes('369136473') || lower.includes('entrada')) return '369136473';
-    if (lower.includes('369135587') || lower.includes('portable')) return '369135587';
     return '';
   }
 
@@ -368,11 +366,11 @@ class ChuangmiPTZCard extends HTMLElement {
             attrs.brand === 'Chuangmi Liberator WebRTC' ||
             (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
             attrs.did ||
-            eid.includes('camera_entrada') ||
-            eid.includes('camara_portable')
+            eid.includes('chuangmi') ||
+            eid.includes('imilab')
           ) {
             defaultCam = eid;
-            defaultDid = attrs.did || (eid.includes('369136473') ? '369136473' : (eid.includes('369135587') ? '369135587' : ''));
+            defaultDid = attrs.did ? String(attrs.did) : (eid.match(/\d{8,10}/)?.[0] || '');
             defaultStream = attrs.stream_name || (defaultDid ? `chuangmi_${defaultDid}` : '');
             break;
           }
@@ -412,12 +410,11 @@ class ChuangmiPTZCard extends HTMLElement {
 
     const camState = this._hass.states[camEntity];
     const attrs = camState?.attributes || {};
-    const did = attrs.did || this._config.did || (camEntity.includes('369136473') ? '369136473' : (camEntity.includes('369135587') ? '369135587' : ''));
+    const did = attrs.did ? String(attrs.did) : (this._config.did ? String(this._config.did) : (camEntity.match(/\d{8,10}/)?.[0] || ''));
 
-    const isEntrada = did === '369136473' || camEntity.toLowerCase().includes('entrada');
-    const isPortable = did === '369135587' || camEntity.toLowerCase().includes('portable');
-    const key = isEntrada ? 'entrada' : (isPortable ? 'portable' : '');
-    const mac = isEntrada ? 'ebc2' : (isPortable ? 'e84c' : '');
+    // Extract search tokens from camera entity and friendly name
+    const camTokens = camEntity.replace(/^camera\./, '').toLowerCase().split(/[^a-z0-9]+/i).filter(t => t.length >= 3 && !['camera', 'camara', 'live'].includes(t));
+    const fnTokens = (attrs.friendly_name || '').toLowerCase().split(/[^a-z0-9]+/i).filter(t => t.length >= 3 && !['camera', 'camara', 'live'].includes(t));
 
     const found = {
       ptz_up: '',
@@ -434,12 +431,12 @@ class ChuangmiPTZCard extends HTMLElement {
     for (const [eid, s] of Object.entries(states)) {
       const eidLower = eid.toLowerCase();
       const fnLower = (s.attributes?.friendly_name || '').toLowerCase();
-      const entityDid = s.attributes?.did || '';
+      const entityDid = s.attributes?.did ? String(s.attributes.did) : '';
 
       const matchesCamera = (
         (did && (entityDid === did || eidLower.includes(did))) ||
-        (mac && eidLower.includes(mac)) ||
-        (key && (eidLower.includes(key) || fnLower.includes(key)))
+        (camTokens.length > 0 && camTokens.some(tok => eidLower.includes(tok))) ||
+        (fnTokens.length > 0 && fnTokens.some(tok => fnLower.includes(tok)))
       );
 
       if (!matchesCamera) continue;
@@ -1546,12 +1543,12 @@ class ChuangmiPTZCardEditor extends HTMLElement {
           attrs.brand === 'Chuangmi Liberator WebRTC' ||
           (attrs.stream_name && attrs.stream_name.startsWith('chuangmi_')) ||
           attrs.did ||
-          eid.includes('camera_entrada') ||
-          eid.includes('camara_portable')
+          eid.includes('chuangmi') ||
+          eid.includes('imilab')
         );
 
         if (isChuangmi) {
-          const did = attrs.did || (eid.includes('369136473') ? '369136473' : (eid.includes('369135587') ? '369135587' : ''));
+          const did = attrs.did ? String(attrs.did) : (eid.match(/\d{8,10}/)?.[0] || '');
           const streamName = attrs.stream_name || (did ? `chuangmi_${did}` : '');
           const cleanName = cleanCameraDisplayName(attrs.friendly_name || eid, '');
 
@@ -1567,12 +1564,14 @@ class ChuangmiPTZCardEditor extends HTMLElement {
 
     if (chuangmiCameras.length === 0) {
       for (const [eid, state] of Object.entries(this._hass.states)) {
-        if (eid.startsWith('camera.') && !eid.includes('comedor') && !eid.includes('oukitel')) {
+        if (eid.startsWith('camera.')) {
+          const attrs = state.attributes || {};
+          const did = attrs.did ? String(attrs.did) : (eid.match(/\d{8,10}/)?.[0] || '');
           chuangmiCameras.push({
             value: eid,
-            label: cleanCameraDisplayName(state.attributes.friendly_name || eid, ''),
-            stream_name: eid,
-            did: ''
+            label: cleanCameraDisplayName(attrs.friendly_name || eid, ''),
+            stream_name: attrs.stream_name || (did ? `chuangmi_${did}` : ''),
+            did: did
           });
         }
       }

@@ -39,6 +39,7 @@ from .const import (
     CONF_SERVER_COUNTRY,
     CONF_USERNAME,
     GO2RTC_API_URL,
+    PORT_RTSP,
 )
 from .xiaomi_client import XiaomiClient
 
@@ -264,9 +265,9 @@ class ChuangmiLiberatorCamera(Camera):
 
         auth = self._go2rtc_auth
         if auth and auth.login and auth.password:
-            rtsp = f"rtsp://{auth.login}:{auth.password}@127.0.0.1:8554/{stream_name}"
+            rtsp = f"rtsp://{auth.login}:{auth.password}@127.0.0.1:{PORT_RTSP}/{stream_name}"
         else:
-            rtsp = f"rtsp://127.0.0.1:8554/{stream_name}"
+            rtsp = f"rtsp://127.0.0.1:{PORT_RTSP}/{stream_name}"
         return rtsp
 
     async def async_handle_async_webrtc_offer(

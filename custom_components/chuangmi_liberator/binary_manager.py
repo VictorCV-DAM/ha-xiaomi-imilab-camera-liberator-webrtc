@@ -43,14 +43,17 @@ def get_arch_filename() -> Optional[str]:
 
 
 async def async_ensure_patched_go2rtc(hass: HomeAssistant) -> Optional[str]:
-    """Ensure the patched go2rtc binary is installed in Home Assistant config."""
-    target_name = f"go2rtc-{BINARY_VERSION}"
+    """Ensure the patched go2rtc binary is installed in private component bin folder."""
+    bin_dir = hass.config.path("custom_components", "chuangmi_liberator", "bin")
+    os.makedirs(bin_dir, exist_ok=True)
+
+    target_name = "go2rtc-chuangmi"
     if platform.system() == "Windows":
         target_name += ".exe"
 
-    binary_path = hass.config.path(target_name)
+    binary_path = os.path.join(bin_dir, target_name)
 
-    # 1. Check if binary already exists and is executable
+    # 1. Check if private binary already exists and is executable
     if os.path.isfile(binary_path):
         try:
             res = await hass.async_add_executor_job(
@@ -62,7 +65,20 @@ async def async_ensure_patched_go2rtc(hass: HomeAssistant) -> Optional[str]:
         except Exception as e:
             _LOGGER.warning("Existing go2rtc binary check error: %s", e)
 
-    # 2. Determine architecture filename
+    # 2. Check if a valid go2rtc binary is in /config root and copy it
+    root_binary = hass.config.path(f"go2rtc-{BINARY_VERSION}")
+    if os.path.isfile(root_binary):
+        try:
+            import shutil
+            await hass.async_add_executor_job(lambda: shutil.copy2(root_binary, binary_path))
+            st = os.stat(binary_path)
+            os.chmod(binary_path, st.st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+            _LOGGER.info("Copied root go2rtc binary to private location %s", binary_path)
+            return binary_path
+        except Exception as err:
+            _LOGGER.debug("Could not copy root go2rtc binary: %s", err)
+
+    # 3. Determine architecture filename
     arch_file = get_arch_filename()
     if not arch_file:
         _LOGGER.warning(

@@ -2,9 +2,10 @@
 import logging
 import os
 import json
+import asyncio
 from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import Platform, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import HomeAssistant
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -22,6 +23,13 @@ from .const import (
 )
 from .xiaomi_client import XiaomiClient
 from .binary_manager import async_ensure_patched_go2rtc
+from .server import (
+    PORT_API,
+    ChuangmiServer,
+    generate_chuangmi_config,
+    async_check_alive,
+    async_bridge_to_primary_go2rtc,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -148,8 +156,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Chuangmi Liberator WebRTC from a config entry."""
     hass.data.setdefault(DOMAIN, {})
 
-    # Automatically ensure the patched go2rtc binary is deployed
-    await async_ensure_patched_go2rtc(hass)
+    # Automatically ensure the patched go2rtc binary is deployed in private bin
+    binary_path = await async_ensure_patched_go2rtc(hass)
 
     # Register Lovelace custom card
     await _async_register_card(hass)
@@ -171,9 +179,47 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Discovered %d Xiaomi cameras. Updating fleet...", len(cameras))
         hass.config_entries.async_update_entry(entry, data=new_data)
 
+    # Generate isolated configuration on ports 1985 / 8556 / 8557
+    country = entry.data.get(CONF_SERVER_COUNTRY, "de")
+    user_id = entry.data.get(CONF_USERNAME, "")
+    config_path = generate_chuangmi_config(hass, cameras, country=country, user_id=user_id)
+
+    # Launch dedicated non-colliding go2rtc daemon if not already running on 1985
+    server = None
+    if not await async_check_alive(session, f"http://127.0.0.1:{PORT_API}"):
+        if binary_path and os.path.isfile(binary_path):
+            server = ChuangmiServer(binary_path, config_path)
+            server.start()
+            _LOGGER.info("Started dedicated Chuangmi go2rtc instance on port %d", PORT_API)
+
+    # Periodic background bridge into primary go2rtc (:1984) when active
+    async def _periodic_bridge():
+        while True:
+            try:
+                await async_bridge_to_primary_go2rtc(session, cameras)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                _LOGGER.debug("Bridge to primary go2rtc (:1984): %s", e)
+            await asyncio.sleep(30)
+
+    bridge_task = hass.async_create_background_task(_periodic_bridge(), "chuangmi_bridge_loop")
+
+    def _stop_server(event=None):
+        if bridge_task and not bridge_task.done():
+            bridge_task.cancel()
+        if server:
+            server.stop()
+
+    entry.async_on_unload(
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_server)
+    )
+
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
-        "entry_data": new_data
+        "entry_data": new_data,
+        "server": server,
+        "bridge_task": bridge_task
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -182,6 +228,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    entry_state = hass.data[DOMAIN].get(entry.entry_id, {})
+    bridge_task = entry_state.get("bridge_task")
+    if bridge_task and not bridge_task.done():
+        bridge_task.cancel()
+    server = entry_state.get("server")
+    if server:
+        server.stop()
+
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)

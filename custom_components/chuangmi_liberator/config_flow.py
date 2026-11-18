@@ -178,7 +178,7 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
                 num = len(cameras_data)
                 suffix = "s" if num > 1 else ""
-                title = f"Chuangmi Liberator ({num} camera{suffix})"
+                title = f"Chuangmi Liberator ({num} cámara{suffix})"
 
                 user_id = self.account_data.get(CONF_USERNAME) or "local"
                 await self.async_set_unique_id(f"{DOMAIN}_{user_id}")

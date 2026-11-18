@@ -106,11 +106,8 @@ def generate_chuangmi_config(
             streams[stream_name] = [
                 f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=0"
             ]
-            streams[f"{stream_name}_sd"] = [
-                f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}#transport=tcp"
-            ]
 
-    preload = {s: "" for s in streams if not s.endswith("_sd")}
+    preload = {s: "" for s in streams}
 
     cfg = {
         "api": {"listen": f":{api_port}"},
@@ -213,24 +210,17 @@ async def async_bridge_to_primary_go2rtc(
                 source_url
             ]
         }
-        payload_sd = {
-            "name": f"{base_stream}_sd",
-            "src": [
-                source_url
-            ]
-        }
-        for p in [payload_base, payload_sd]:
-            st_name = p["name"]
-            # If stream is already defined in primary go2rtc, DO NOT overwrite it (avoids killing live WebRTC consumers!)
-            if st_name in existing_streams:
-                producers = existing_streams.get(st_name, {}).get("producers") or []
-                prod_urls = [pr.get("url") for pr in producers if isinstance(pr, dict)]
-                if any(source_url in u for u in prod_urls):
-                    continue
+        st_name = payload_base["name"]
+        # If stream is already defined in primary go2rtc, DO NOT overwrite it (avoids killing live WebRTC consumers!)
+        if st_name in existing_streams:
+            producers = existing_streams.get(st_name, {}).get("producers") or []
+            prod_urls = [pr.get("url") for pr in producers if isinstance(pr, dict)]
+            if any(source_url in u for u in prod_urls):
+                continue
 
-            try:
-                async with session.put(f"{primary_url}/api/streams", json=p, timeout=2) as resp:
-                    if resp.status in (200, 201):
-                        _LOGGER.info("Registered stream %s into primary go2rtc (%s)", st_name, primary_url)
-            except Exception as e:
-                _LOGGER.debug("Error registering stream %s into primary go2rtc: %s", st_name, e)
+        try:
+            async with session.put(f"{primary_url}/api/streams", json=payload_base, timeout=2) as resp:
+                if resp.status in (200, 201):
+                    _LOGGER.info("Registered stream %s into primary go2rtc (%s)", st_name, primary_url)
+        except Exception as e:
+            _LOGGER.debug("Error registering stream %s into primary go2rtc: %s", st_name, e)

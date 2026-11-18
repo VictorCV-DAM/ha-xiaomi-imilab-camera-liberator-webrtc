@@ -51,7 +51,7 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 
 - **⚡ Zero-Lag WebRTC Streaming (&lt;200ms):** Eliminates the annoying 2–5 second cloud latency and buffering of traditional HLS/RTSP streams. Streams directly via hardware-accelerated `go2rtc` and WebSocket peer negotiation.
 - **🎥 Instant In-Card Video Recording:** Center record button (`RECORD` / `GRABAR`) records live video chunks directly from the browser with an active stopwatch timer (`● RECORDING 00:00`), automatically downloading the MP4/WebM video clip upon completion while triggering the camera's local 30s storage backup.
-- **🎛️ Interactive Resolution Selector Badge:** Switch dynamically between **2K WEBRTC** (maximum native resolution), **HD 1080P** (high-efficiency fluid native stream), and **SD 360P** (lightweight mobile stream). User preferences are remembered and persisted per camera in local storage.
+- **⚡ Instant Native 2K WebRTC Streaming:** Direct hardware-accelerated H.265/H.264 streaming with zero transcoding overhead and sub-second startup.
 - **🎮 Tactile Lovelace PTZ Card (`chuangmi-ptz-card`):**
   - Responsive circular directional D-pad (Up, Down, Left, Right) with hardware gear debouncing.
   - **Ceiling / Inversion Awareness:** Pressing Up moves the camera visually upward regardless of 0° or 180° inverted ceiling mounting.
@@ -127,7 +127,7 @@ title: Front Entrance (2K PTZ)
 | Feature | Description |
 | :--- | :--- |
 | **WebRTC 2K / HD Live** | Instant frame playback without buffering or keyframe lag |
-| **Resolution Badge** | Toggle between 2K WEBRTC, HD 1080P, and SD 360P with persistent memory |
+| **Native 2K WebRTC** | Direct hardware streaming with zero transcoding overhead and sub-second startup |
 | **PTZ D-Pad** | Motor commands with hardware debouncing to prevent packet collisions |
 | **Instant Video Record** | Record live video clips with real-time timer directly from your dashboard |
 | **Flip 180°** | Toggle image orientation for ceiling or upside-down mounts |
@@ -275,7 +275,7 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 +-------------------------------------------------------------+
 ```
 
-1. **Video Path:** WebRTC frames stream peer-to-peer directly between `go2rtc` and your browser/app for &lt;200ms latency. The card supports instantaneous quality toggling (2K / HD / SD).
+1. **Video Path:** WebRTC frames stream peer-to-peer directly between `go2rtc` and your browser/app for &lt;200ms latency. The card streams native ultra-crisp resolution directly without transcoding.
 2. **Control Path:** PTZ moves and switch commands are transmitted directly via UDP packets using miIO AES-CBC encryption without internet roundtrips.
 
 ---

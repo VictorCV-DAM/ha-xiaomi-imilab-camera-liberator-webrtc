@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.9.0)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.9.1)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -51,10 +51,6 @@ const CARD_I18N = {
     editor_helper: '✨ Detección automática: la cruceta PTZ, el botón de grabación y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
     card_name: 'Tarjeta Cámara Chuangmi PTZ',
     card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, grabación instantánea y controles locales para cámaras Chuangmi / Imilab.',
-    badge_2k: '2K WEBRTC',
-    badge_hd: 'HD 1080P',
-    badge_sd: 'SD 360P',
-    quality_tooltip: 'Hacer clic para alternar resolución (HD 1080p / 2K Máxima / SD 360p)',
     hide_controls: 'Ocultar controles (Cruceta PTZ y acciones)',
     show_controls: 'Desplegar controles (Cruceta PTZ y acciones)',
     editor_show_controls: 'Mostrar controles inferiores (Cruceta PTZ y acciones)',
@@ -90,10 +86,6 @@ const CARD_I18N = {
     editor_helper: '✨ Automatic detection: PTZ D-pad, record button, and bottom action buttons bind automatically.',
     card_name: 'Chuangmi PTZ Camera Card',
     card_desc: 'Live 2K WebRTC streaming with PTZ controls, instant recording, and local toggles for Chuangmi / Imilab cameras.',
-    badge_2k: '2K WEBRTC',
-    badge_hd: 'HD 1080P',
-    badge_sd: 'SD 360P',
-    quality_tooltip: 'Click to switch resolution (HD 1080p / 2K Ultra / SD 360p)',
     hide_controls: 'Hide controls (PTZ D-pad & actions)',
     show_controls: 'Show controls (PTZ D-pad & actions)',
     editor_show_controls: 'Show bottom controls (PTZ D-pad & actions)',
@@ -190,8 +182,7 @@ class ChuangmiPTZCard extends HTMLElement {
     this._recordSeconds = 0;
     this._rendered = false;
     this._hasRenderedWithHass = false;
-    this._discoveredEntities = {};
-    this._quality = 'hd'; // Default is 'hd' (native camera resolution, stable and fluid)
+    this._discoveredEntities = {}; // Default is 'hd' (native camera resolution, stable and fluid)
     this._controlsCollapsed = false;
     this._compactMargins = false;
     this._preferencesLoaded = false;
@@ -213,11 +204,6 @@ class ChuangmiPTZCard extends HTMLElement {
     return '';
   }
 
-  _getStorageKey() {
-    const did = this._getCamDid() || (this._config?.camera_entity || 'default');
-    return `chuangmi_quality_${did}`;
-  }
-
   _getControlsStorageKey() {
     const did = this._getCamDid() || (this._config?.camera_entity || 'default');
     return `chuangmi_controls_${did}`;
@@ -229,13 +215,7 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _loadPreferences() {
-    // 1. Always prioritize native 2K WebRTC (fastest, sharpest, zero-delay stream)
-    this._quality = '2k';
-    try {
-      localStorage.removeItem(this._getStorageKey());
-    } catch (_) {}
-
-    // 2. Controls collapsed / expanded
+    // Controls collapsed / expanded
     try {
       const savedControls = localStorage.getItem(this._getControlsStorageKey());
       if (savedControls !== null) {
@@ -422,9 +402,6 @@ class ChuangmiPTZCard extends HTMLElement {
       base = camEntity.replace(/^camera\./, '');
     }
 
-    if (this._quality === 'sd') {
-      return `${base}_sd`;
-    }
     return base;
   }
 
@@ -675,39 +652,9 @@ class ChuangmiPTZCard extends HTMLElement {
     return model.includes('026c02') || model.includes('046c04') || model.includes('069a01') || model.includes('ipc021') || model.includes('ipc022') || model.includes('2k') || model.includes('3k') || model.includes('c300') || model.includes('c400') || model.includes('c500');
   }
 
-  _cycleQuality() {
-    // Native 2K WebRTC stream is always active and optimal.
-    this._quality = '2k';
-    this._updateQualityBadge();
-    const badge = this.shadowRoot.getElementById('badgeQuality');
-    if (badge) {
-      badge.style.transform = 'scale(1.08)';
-      setTimeout(() => { badge.style.transform = 'scale(1)'; }, 200);
-    }
-  }
-
-  _applyQualityRendering() {
-    try {
-      const webrtc = this.shadowRoot?.querySelector('webrtc-camera');
-      const video = webrtc?.shadowRoot?.querySelector('video') || webrtc?.querySelector('video') || this.shadowRoot?.querySelector('video');
-      if (!video) return;
-      if (this._quality === 'sd') {
-        video.style.filter = 'contrast(1.04) brightness(1.02)';
-        video.style.imageRendering = '-webkit-optimize-contrast';
-      } else if (this._quality === 'hd') {
-        video.style.filter = 'none';
-        video.style.imageRendering = 'auto';
-      } else {
-        video.style.filter = 'contrast(1.02)';
-        video.style.imageRendering = 'auto';
-      }
-    } catch (_) {}
-  }
-
   _switchStream(streamName) {
     const container = this.shadowRoot.getElementById('videoContainer');
     if (!container || !streamName) {
-      this._isQualitySwitching = false;
       return;
     }
 
@@ -716,7 +663,6 @@ class ChuangmiPTZCard extends HTMLElement {
 
     // If stream is already active and playing this exact URL, do not tear down WebRTC!
     if (currentStream === streamName) {
-      this._isQualitySwitching = false;
       this._hideOverlay();
       return;
     }
@@ -737,24 +683,7 @@ class ChuangmiPTZCard extends HTMLElement {
 
     setTimeout(() => {
       this._ensureWebRTC(true);
-      setTimeout(() => {
-        this._isQualitySwitching = false;
-      }, 400);
     }, 100);
-  }
-
-  _updateQualityBadge() {
-    const btn = this.shadowRoot.getElementById('badgeQuality');
-    const label = this.shadowRoot.getElementById('badgeLabel');
-    const i18n = getCardI18n(this._hass);
-    if (!btn || !label) return;
-
-    btn.classList.remove('q-2k', 'q-hd', 'q-sd');
-    btn.classList.add(`q-${this._quality}`);
-
-    if (this._quality === '2k') label.textContent = i18n.badge_2k;
-    else if (this._quality === 'hd') label.textContent = i18n.badge_hd;
-    else label.textContent = i18n.badge_sd;
   }
 
   _showOverlay(text, showSpinner = true, showRetry = false) {
@@ -1060,43 +989,6 @@ class ChuangmiPTZCard extends HTMLElement {
         }
         .header-title:active {
           transform: scale(0.98);
-        }
-        .badge-quality {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 0.7rem;
-          font-weight: 800;
-          padding: 4px 10px;
-          border-radius: 8px;
-          border: 1px solid;
-          letter-spacing: 0.5px;
-          cursor: pointer;
-          outline: none;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
-        .badge-quality:hover {
-          transform: translateY(-1px) scale(1.04);
-          filter: brightness(1.15);
-        }
-        .badge-quality:active {
-          transform: scale(0.96);
-        }
-        .badge-quality.q-2k {
-          background: rgba(16, 185, 129, 0.16);
-          border-color: rgba(16, 185, 129, 0.45);
-          color: #10b981;
-        }
-        .badge-quality.q-hd {
-          background: rgba(6, 182, 212, 0.16);
-          border-color: rgba(6, 182, 212, 0.45);
-          color: #06b6d4;
-        }
-        .badge-quality.q-sd {
-          background: rgba(245, 158, 11, 0.16);
-          border-color: rgba(245, 158, 11, 0.45);
-          color: #f59e0b;
         }
         .badge-dot {
           width: 6px;
@@ -1504,9 +1396,6 @@ class ChuangmiPTZCard extends HTMLElement {
     const btnFloatingToggle = this.shadowRoot.getElementById('btnFloatingToggle');
     if (btnFloatingToggle) btnFloatingToggle.onclick = () => this._toggleControls();
 
-    // Interactive Quality / Resolution Selector Badge
-    const badgeBtn = this.shadowRoot.getElementById('badgeQuality');
-    if (badgeBtn) badgeBtn.onclick = () => this._cycleQuality();
 
     // Reconnect Retry Button
     const retryBtn = this.shadowRoot.getElementById('videoRetryBtn');

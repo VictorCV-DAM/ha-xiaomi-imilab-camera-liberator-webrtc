@@ -107,7 +107,7 @@ def generate_chuangmi_config(
                 f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=0"
             ]
             streams[f"{stream_name}_sd"] = [
-                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=0"
+                stream_name
             ]
 
     cfg = {
@@ -193,19 +193,25 @@ async def async_bridge_to_primary_go2rtc(
         did = str(c.get("camera_did") or "")
         if not did:
             continue
-        for suffix in ["", "_sd"]:
-            stream_name = f"chuangmi_{did}{suffix}"
-            source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}#transport=tcp"
-            payload = {
-                "name": stream_name,
-                "src": [
-                    source_url,
-                    f"ffmpeg:{stream_name}#audio=opus"
-                ]
-            }
+        base_stream = f"chuangmi_{did}"
+        source_url = f"rtsp://127.0.0.1:{rtsp_port}/{base_stream}#transport=tcp"
+        payload_base = {
+            "name": base_stream,
+            "src": [
+                source_url,
+                f"ffmpeg:{base_stream}#audio=opus"
+            ]
+        }
+        payload_sd = {
+            "name": f"{base_stream}_sd",
+            "src": [
+                base_stream
+            ]
+        }
+        for p in [payload_base, payload_sd]:
             try:
-                async with session.put(f"{primary_url}/api/streams", json=payload, timeout=2) as resp:
+                async with session.put(f"{primary_url}/api/streams", json=p, timeout=2) as resp:
                     if resp.status in (200, 201):
-                        _LOGGER.debug("Bridged %s to primary go2rtc (%s) with H264 fallback", stream_name, primary_url)
+                        _LOGGER.debug("Bridged %s to primary go2rtc (%s)", p["name"], primary_url)
             except Exception:
                 pass

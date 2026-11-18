@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.7.6)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.0)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -229,15 +229,12 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _loadPreferences() {
-    // 1. Resolution / Quality
-    const is2k = this._is2KModel();
-    const defaultQ = is2k ? '2k' : 'hd';
+    // 1. Resolution / Quality (2K, HD, SD)
     try {
-      let savedQuality = localStorage.getItem(this._getStorageKey());
-      if (savedQuality === '2k' && !is2k) savedQuality = 'hd';
-      this._quality = this._config.quality || savedQuality || defaultQ;
+      const savedQuality = localStorage.getItem(this._getStorageKey());
+      this._quality = this._config.quality || savedQuality || '2k';
     } catch (_) {
-      this._quality = this._config.quality || defaultQ;
+      this._quality = this._config.quality || '2k';
     }
 
     // 2. Controls collapsed / expanded
@@ -394,20 +391,14 @@ class ChuangmiPTZCard extends HTMLElement {
   _resolveStreamName(camEntity) {
     if (!camEntity) return '';
 
-    let baseStream = '';
     const did = this._getCamDid();
     if (did) {
-      baseStream = `chuangmi_${did}`;
-    } else if (this._config?.stream_name) {
-      baseStream = this._config.stream_name.replace(/_sd$/, '');
-    } else {
-      baseStream = camEntity.replace(/^camera\./, '');
+      return `chuangmi_${did}`;
     }
-
-    if (this._quality === 'sd') {
-      return baseStream.endsWith('_sd') ? baseStream : `${baseStream}_sd`;
+    if (this._config?.stream_name) {
+      return this._config.stream_name.replace(/_sd$/, '');
     }
-    return baseStream.replace(/_sd$/, '');
+    return camEntity.replace(/^camera\./, '');
   }
 
   _updateEntities() {
@@ -661,13 +652,9 @@ class ChuangmiPTZCard extends HTMLElement {
     if (this._isQualitySwitching) return;
     this._isQualitySwitching = true;
 
-    const is2k = this._is2KModel();
-    if (is2k) {
-      const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
-      this._quality = cycle[this._quality] || '2k';
-    } else {
-      this._quality = (this._quality === 'hd') ? 'sd' : 'hd';
-    }
+    // Full 3-stage quality rotation: 2K -> HD -> SD -> 2K
+    const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
+    this._quality = cycle[this._quality] || '2k';
 
     try {
       localStorage.setItem(this._getStorageKey(), this._quality);
@@ -685,19 +672,28 @@ class ChuangmiPTZCard extends HTMLElement {
       return;
     }
 
+    const currentWebrtc = container.querySelector('webrtc-camera');
+    const currentStream = currentWebrtc?._config?.url || currentWebrtc?.config?.url || '';
+
+    // If stream is already active and playing this exact URL, do not tear down WebRTC!
+    if (currentStream === streamName) {
+      this._isQualitySwitching = false;
+      this._hideOverlay();
+      return;
+    }
+
     const i18n = getCardI18n(this._hass);
     this._showOverlay(i18n.connecting, true, false);
 
-    const oldWebrtc = container.querySelector('webrtc-camera');
-    if (oldWebrtc) {
+    if (currentWebrtc) {
       try {
-        if (typeof oldWebrtc.ondisconnect === 'function') oldWebrtc.ondisconnect();
-        if (oldWebrtc.disconnectTID) clearTimeout(oldWebrtc.disconnectTID);
-        if (oldWebrtc.reconnectTID) clearTimeout(oldWebrtc.reconnectTID);
-        if (oldWebrtc.ws) oldWebrtc.ws.close();
-        if (oldWebrtc.pc) oldWebrtc.pc.close();
+        if (typeof currentWebrtc.ondisconnect === 'function') currentWebrtc.ondisconnect();
+        if (currentWebrtc.disconnectTID) clearTimeout(currentWebrtc.disconnectTID);
+        if (currentWebrtc.reconnectTID) clearTimeout(currentWebrtc.reconnectTID);
+        if (currentWebrtc.ws) currentWebrtc.ws.close();
+        if (currentWebrtc.pc) currentWebrtc.pc.close();
       } catch (_) {}
-      try { oldWebrtc.remove(); } catch (_) {}
+      try { currentWebrtc.remove(); } catch (_) {}
     }
 
     setTimeout(() => {

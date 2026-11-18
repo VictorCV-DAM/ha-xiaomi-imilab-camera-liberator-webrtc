@@ -38,8 +38,8 @@ from .const import (
     CONF_CAMERAS,
     CONF_SERVER_COUNTRY,
     CONF_USERNAME,
-    GO2RTC_API_URL,
-    PORT_RTSP,
+    DEFAULT_API_PORT,
+    DEFAULT_RTSP_PORT,
 )
 from .xiaomi_client import XiaomiClient
 
@@ -97,6 +97,8 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     entry_data = data["entry_data"]
     client: XiaomiClient = data["client"]
+    api_port = data.get("api_port", DEFAULT_API_PORT)
+    rtsp_port = data.get("rtsp_port", DEFAULT_RTSP_PORT)
 
     go2rtc_cfg = hass.config.path("go2rtc.yaml")
     go2rtc_auth = await hass.async_add_executor_job(_load_go2rtc_auth_sync, go2rtc_cfg)
@@ -137,7 +139,9 @@ async def async_setup_entry(
             unique_id=f"{DOMAIN}_{did}_camera",
             go2rtc_auth=go2rtc_auth,
             user_id=user_id,
-            fallback_image=fallback_bytes
+            fallback_image=fallback_bytes,
+            api_port=api_port,
+            rtsp_port=rtsp_port
         )
         camera_entities.append(cam_entity)
 
@@ -161,7 +165,9 @@ class ChuangmiLiberatorCamera(Camera):
         unique_id: str,
         go2rtc_auth: Optional[aiohttp.BasicAuth] = None,
         user_id: Optional[str] = None,
-        fallback_image: Optional[bytes] = None
+        fallback_image: Optional[bytes] = None,
+        api_port: int = DEFAULT_API_PORT,
+        rtsp_port: int = DEFAULT_RTSP_PORT
     ):
         super().__init__()
         self.hass = hass
@@ -178,6 +184,9 @@ class ChuangmiLiberatorCamera(Camera):
         self._stored_user_id = user_id
         self._fallback_image = fallback_image
         self._last_image: Optional[bytes] = fallback_image
+        self._api_port = api_port
+        self._rtsp_port = rtsp_port
+        self._api_url = f"http://127.0.0.1:{api_port}"
         self._attr_is_on = True
         self._attr_supported_features = CameraEntityFeature.STREAM
 
@@ -239,7 +248,7 @@ class ChuangmiLiberatorCamera(Camera):
         """Fetch frame snapshot from go2rtc snapshot API with cached fallback."""
         stream_name = f"chuangmi_{self._did}"
         try:
-            url = f"{GO2RTC_API_URL}/api/frame.jpeg?src={stream_name}&cache=3s"
+            url = f"{self._api_url}/api/frame.jpeg?src={stream_name}&cache=3s"
             session = async_get_clientsession(self.hass)
             auth = self._go2rtc_auth
             async with session.get(url, auth=auth, timeout=3) as resp:
@@ -265,9 +274,9 @@ class ChuangmiLiberatorCamera(Camera):
 
         auth = self._go2rtc_auth
         if auth and auth.login and auth.password:
-            rtsp = f"rtsp://{auth.login}:{auth.password}@127.0.0.1:{PORT_RTSP}/{stream_name}"
+            rtsp = f"rtsp://{auth.login}:{auth.password}@127.0.0.1:{self._rtsp_port}/{stream_name}"
         else:
-            rtsp = f"rtsp://127.0.0.1:{PORT_RTSP}/{stream_name}"
+            rtsp = f"rtsp://127.0.0.1:{self._rtsp_port}/{stream_name}"
         return rtsp
 
     async def async_handle_async_webrtc_offer(
@@ -280,7 +289,7 @@ class ChuangmiLiberatorCamera(Camera):
         stream_name = f"chuangmi_{self._did}"
         session = async_get_clientsession(self.hass)
         auth = self._go2rtc_auth
-        url = f"{GO2RTC_API_URL}/api/webrtc?src={stream_name}"
+        url = f"{self._api_url}/api/webrtc?src={stream_name}"
         headers = {"Content-Type": "application/sdp"}
         try:
             async with session.post(
@@ -320,7 +329,7 @@ class ChuangmiLiberatorCamera(Camera):
         stream_name = f"chuangmi_{self._did}"
         session = async_get_clientsession(self.hass)
         auth = self._go2rtc_auth
-        url = f"{GO2RTC_API_URL}/api/webrtc?src={stream_name}"
+        url = f"{self._api_url}/api/webrtc?src={stream_name}"
         headers = {"Content-Type": "application/sdp"}
         try:
             async with session.post(
@@ -343,7 +352,7 @@ class ChuangmiLiberatorCamera(Camera):
         session = async_get_clientsession(self.hass)
         auth = self._go2rtc_auth
         params = [("name", name), ("src", src)]
-        url = f"{GO2RTC_API_URL}/api/streams"
+        url = f"{self._api_url}/api/streams"
         try:
             async with session.put(url, params=params, auth=auth, timeout=3) as resp:
                 if resp.status in [200, 201]:

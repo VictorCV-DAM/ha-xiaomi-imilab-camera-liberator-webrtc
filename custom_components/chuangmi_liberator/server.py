@@ -2,9 +2,10 @@
 import asyncio
 import logging
 import os
+import socket
 import subprocess
 import threading
-from typing import Optional
+from typing import Optional, Set
 import aiohttp
 import yaml
 
@@ -12,13 +13,56 @@ from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
 
-PORT_API = 1985
-PORT_RTSP = 8556
-PORT_WEBRTC = 8557
+# Reserved official go2rtc ports that must never be used by the isolated daemon
+PRIMARY_RESERVED_PORTS: Set[int] = {1984, 8554, 8555}
+
+
+def is_port_in_use(port: int) -> bool:
+    """Check if a port is in use on TCP or UDP."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind(('0.0.0.0', port))
+        except OSError:
+            return True
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.bind(('0.0.0.0', port))
+        except OSError:
+            return True
+    return False
+
+
+def find_available_port(preferred_port: int, fallback_start: int = 1985, exclude: Optional[Set[int]] = None) -> int:
+    """Find a guaranteed free port. Never returns a reserved primary go2rtc port."""
+    if exclude is None:
+        exclude = set(PRIMARY_RESERVED_PORTS)
+    else:
+        exclude = exclude.union(PRIMARY_RESERVED_PORTS)
+
+    # 1. If preferred port is provided, not excluded, and currently free, use it
+    if preferred_port > 0 and preferred_port not in exclude and not is_port_in_use(preferred_port):
+        return preferred_port
+
+    # 2. Search upwards starting from fallback_start
+    port = fallback_start
+    while port < fallback_start + 100:
+        if port not in exclude and not is_port_in_use(port):
+            return port
+        port += 1
+
+    return preferred_port or fallback_start
 
 
 def generate_chuangmi_config(
-    hass: HomeAssistant, cameras: list, country: str = "de", user_id: str = "6243072468"
+    hass: HomeAssistant,
+    cameras: list,
+    country: str = "de",
+    user_id: str = "6243072468",
+    api_port: int = 1985,
+    rtsp_port: int = 8556,
+    webrtc_port: int = 8557,
+    log_level: str = "info"
 ) -> str:
     """Generate dedicated non-colliding go2rtc.yaml for Chuangmi cameras."""
     config_path = hass.config.path("custom_components", "chuangmi_liberator", "chuangmi_go2rtc.yaml")
@@ -45,14 +89,14 @@ def generate_chuangmi_config(
             stream_name = f"chuangmi_{did}"
             streams[stream_name] = [
                 f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=sd",
-                f"ffmpeg:rtsp://127.0.0.1:{PORT_RTSP}/{stream_name}#video=h264#audio=opus"
+                f"ffmpeg:rtsp://127.0.0.1:{rtsp_port}/{stream_name}#video=h264#audio=opus"
             ]
 
     cfg = {
-        "api": {"listen": f":{PORT_API}"},
-        "rtsp": {"listen": f":{PORT_RTSP}"},
-        "webrtc": {"listen": f":{PORT_WEBRTC}"},
-        "log": {"level": "info"},
+        "api": {"listen": f":{api_port}"},
+        "rtsp": {"listen": f":{rtsp_port}"},
+        "webrtc": {"listen": f":{webrtc_port}"},
+        "log": {"level": log_level},
         "streams": streams,
         "xiaomi": xiaomi_creds,
     }
@@ -60,7 +104,7 @@ def generate_chuangmi_config(
     try:
         with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(cfg, f)
-        _LOGGER.debug("Saved isolated config to %s", config_path)
+        _LOGGER.debug("Saved isolated config to %s (API:%d, RTSP:%d, WebRTC:%d)", config_path, api_port, rtsp_port, webrtc_port)
     except Exception as err:
         _LOGGER.error("Failed to write chuangmi_go2rtc.yaml: %s", err)
 
@@ -70,10 +114,11 @@ def generate_chuangmi_config(
 class ChuangmiServer(threading.Thread):
     """Isolated background process runner for Chuangmi go2rtc daemon."""
 
-    def __init__(self, binary_path: str, config_path: str):
+    def __init__(self, binary_path: str, config_path: str, api_port: int = 1985):
         super().__init__(name="ChuangmiGo2rtcServer", daemon=True)
         self.binary_path = binary_path
         self.config_path = config_path
+        self.api_port = api_port
         self.process: Optional[subprocess.Popen] = None
         self._running = True
 
@@ -81,7 +126,7 @@ class ChuangmiServer(threading.Thread):
         while self._running:
             try:
                 cmd = [self.binary_path, "-config", self.config_path]
-                _LOGGER.info("Starting isolated Chuangmi go2rtc server on port %d...", PORT_API)
+                _LOGGER.info("Starting isolated Chuangmi go2rtc server on port %d...", self.api_port)
                 self.process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -116,9 +161,13 @@ async def async_check_alive(session: aiohttp.ClientSession, url: str) -> bool:
         return False
 
 
-async def async_bridge_to_primary_go2rtc(session: aiohttp.ClientSession, cameras: list):
+async def async_bridge_to_primary_go2rtc(
+    session: aiohttp.ClientSession,
+    cameras: list,
+    primary_url: str = "http://127.0.0.1:1984",
+    rtsp_port: int = 8556
+):
     """Seamlessly mirror streams into primary go2rtc on :1984 if running."""
-    primary_url = "http://127.0.0.1:1984"
     if not await async_check_alive(session, primary_url):
         return
 
@@ -127,11 +176,11 @@ async def async_bridge_to_primary_go2rtc(session: aiohttp.ClientSession, cameras
         if not did:
             continue
         stream_name = f"chuangmi_{did}"
-        source_url = f"rtsp://127.0.0.1:{PORT_RTSP}/{stream_name}"
+        source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}"
         params = [("name", stream_name), ("src", source_url)]
         try:
             async with session.put(f"{primary_url}/api/streams", params=params, timeout=2) as resp:
                 if resp.status in (200, 201):
-                    _LOGGER.debug("Bridged %s to primary go2rtc (:1984)", stream_name)
+                    _LOGGER.debug("Bridged %s to primary go2rtc (%s)", stream_name, primary_url)
         except Exception:
             pass

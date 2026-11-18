@@ -19,16 +19,28 @@ from .const import (
     CONF_CAMERA_DID,
     CONF_CAMERA_IP,
     CONF_CAMERA_TOKEN,
-    CONF_CAMERA_MODEL
+    CONF_CAMERA_MODEL,
+    CONF_GO2RTC_API_PORT,
+    CONF_GO2RTC_RTSP_PORT,
+    CONF_GO2RTC_WEBRTC_PORT,
+    CONF_ENABLE_BRIDGE,
+    CONF_PRIMARY_GO2RTC_URL,
+    CONF_LOG_LEVEL,
+    DEFAULT_API_PORT,
+    DEFAULT_RTSP_PORT,
+    DEFAULT_WEBRTC_PORT,
+    DEFAULT_PRIMARY_GO2RTC_URL,
+    DEFAULT_ENABLE_BRIDGE,
+    DEFAULT_LOG_LEVEL,
 )
 from .xiaomi_client import XiaomiClient
 from .binary_manager import async_ensure_patched_go2rtc
 from .server import (
-    PORT_API,
     ChuangmiServer,
     generate_chuangmi_config,
     async_check_alive,
     async_bridge_to_primary_go2rtc,
+    find_available_port,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -179,31 +191,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info("Discovered %d Xiaomi cameras. Updating fleet...", len(cameras))
         hass.config_entries.async_update_entry(entry, data=new_data)
 
-    # Generate isolated configuration on ports 1985 / 8556 / 8557
+    # Resolve configured options or autodetect free ports
+    opts = entry.options
+    api_port = opts.get(CONF_GO2RTC_API_PORT) or await hass.async_add_executor_job(
+        find_available_port, DEFAULT_API_PORT, DEFAULT_API_PORT
+    )
+    rtsp_port = opts.get(CONF_GO2RTC_RTSP_PORT) or await hass.async_add_executor_job(
+        find_available_port, DEFAULT_RTSP_PORT, DEFAULT_RTSP_PORT
+    )
+    webrtc_port = opts.get(CONF_GO2RTC_WEBRTC_PORT) or await hass.async_add_executor_job(
+        find_available_port, DEFAULT_WEBRTC_PORT, DEFAULT_WEBRTC_PORT
+    )
+    enable_bridge = opts.get(CONF_ENABLE_BRIDGE, DEFAULT_ENABLE_BRIDGE)
+    primary_url = opts.get(CONF_PRIMARY_GO2RTC_URL, DEFAULT_PRIMARY_GO2RTC_URL)
+    log_level = opts.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+
+    # Generate isolated configuration with assigned non-colliding ports
     country = entry.data.get(CONF_SERVER_COUNTRY, "de")
     user_id = entry.data.get(CONF_USERNAME, "")
-    config_path = generate_chuangmi_config(hass, cameras, country=country, user_id=user_id)
+    config_path = generate_chuangmi_config(
+        hass,
+        cameras,
+        country=country,
+        user_id=user_id,
+        api_port=api_port,
+        rtsp_port=rtsp_port,
+        webrtc_port=webrtc_port,
+        log_level=log_level
+    )
 
-    # Launch dedicated non-colliding go2rtc daemon if not already running on 1985
+    # Launch dedicated non-colliding go2rtc daemon if not already running on api_port
     server = None
-    if not await async_check_alive(session, f"http://127.0.0.1:{PORT_API}"):
+    if not await async_check_alive(session, f"http://127.0.0.1:{api_port}"):
         if binary_path and os.path.isfile(binary_path):
-            server = ChuangmiServer(binary_path, config_path)
+            server = ChuangmiServer(binary_path, config_path, api_port=api_port)
             server.start()
-            _LOGGER.info("Started dedicated Chuangmi go2rtc instance on port %d", PORT_API)
+            _LOGGER.info("Started dedicated Chuangmi go2rtc instance on port %d", api_port)
 
-    # Periodic background bridge into primary go2rtc (:1984) when active
-    async def _periodic_bridge():
-        while True:
-            try:
-                await async_bridge_to_primary_go2rtc(session, cameras)
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                _LOGGER.debug("Bridge to primary go2rtc (:1984): %s", e)
-            await asyncio.sleep(30)
+    # Periodic background bridge into primary go2rtc (:1984) when active and enabled
+    bridge_task = None
+    if enable_bridge:
+        async def _periodic_bridge():
+            while True:
+                try:
+                    await async_bridge_to_primary_go2rtc(
+                        session, cameras, primary_url=primary_url, rtsp_port=rtsp_port
+                    )
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    _LOGGER.debug("Bridge to primary go2rtc (%s): %s", primary_url, e)
+                await asyncio.sleep(30)
 
-    bridge_task = hass.async_create_background_task(_periodic_bridge(), "chuangmi_bridge_loop")
+        bridge_task = hass.async_create_background_task(_periodic_bridge(), "chuangmi_bridge_loop")
 
     def _stop_server(event=None):
         if bridge_task and not bridge_task.done():
@@ -214,16 +254,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _stop_server)
     )
+    entry.async_on_unload(
+        entry.add_update_listener(async_reload_entry)
+    )
 
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
         "entry_data": new_data,
         "server": server,
-        "bridge_task": bridge_task
+        "bridge_task": bridge_task,
+        "api_port": api_port,
+        "rtsp_port": rtsp_port,
+        "webrtc_port": webrtc_port,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry when options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

@@ -51,6 +51,34 @@
       "already_configured": "Esta cámara ya está configurada en Chuangmi Liberator."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configuración de Coexistencia y Puertos",
+        "description": "Configura los puertos dedicados y los ajustes de coexistencia con tu servicio go2rtc principal. Los puertos se verifican automáticamente para asegurar que estén libres.",
+        "data": {
+          "api_port": "Puerto API interno de go2rtc",
+          "rtsp_port": "Puerto RTSP interno",
+          "webrtc_port": "Puerto WebRTC interno",
+          "enable_primary_bridge": "Habilitar puente automático con go2rtc principal",
+          "primary_go2rtc_url": "URL API de go2rtc principal",
+          "log_level": "Nivel de log interno"
+        },
+        "data_description": {
+          "api_port": "Puerto utilizado por el proceso aislado. Los puertos 1984, 8554 y 8555 están reservados para tu go2rtc principal y evitar colisiones.",
+          "rtsp_port": "Puerto para el servidor RTSP interno de las cámaras Chuangmi.",
+          "webrtc_port": "Puerto para la negociación WebRTC interna.",
+          "enable_primary_bridge": "Registra automáticamente las cámaras en tu go2rtc principal en el puerto 1984 para que aparezcan en tu interfaz y tarjetas sin configuración manual.",
+          "primary_go2rtc_url": "Dirección base de tu go2rtc principal (por defecto: http://127.0.0.1:1984).",
+          "log_level": "Detalle del registro del proceso go2rtc en segundo plano."
+        }
+      }
+    },
+    "error": {
+      "port_reserved_primary": "Los puertos 1984, 8554 y 8555 están reservados para tu go2rtc principal para evitar colisiones.",
+      "ports_must_be_distinct": "Los puertos API, RTSP y WebRTC deben ser distintos entre sí."
+    }
+  },
   "entity": {
     "camera": {
       "camera": {

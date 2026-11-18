@@ -19,10 +19,23 @@ from .const import (
     CONF_CAMERA_TOKEN,
     CONF_CAMERA_MODEL,
     CONF_CAMERAS,
+    CONF_GO2RTC_API_PORT,
+    CONF_GO2RTC_RTSP_PORT,
+    CONF_GO2RTC_WEBRTC_PORT,
+    CONF_ENABLE_BRIDGE,
+    CONF_PRIMARY_GO2RTC_URL,
+    CONF_LOG_LEVEL,
+    DEFAULT_API_PORT,
+    DEFAULT_RTSP_PORT,
+    DEFAULT_WEBRTC_PORT,
+    DEFAULT_PRIMARY_GO2RTC_URL,
+    DEFAULT_ENABLE_BRIDGE,
+    DEFAULT_LOG_LEVEL,
     DEFAULT_COUNTRY,
     SERVER_COUNTRIES
 )
 from .xiaomi_client import XiaomiClient
+from .server import find_available_port, is_port_in_use, PRIMARY_RESERVED_PORTS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -248,3 +261,73 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         })
 
         return self.async_show_form(step_id="manual", data_schema=schema, errors=errors)
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+        return ChuangmiLiberatorOptionsFlow(config_entry)
+
+
+class ChuangmiLiberatorOptionsFlow(config_entries.OptionsFlow):
+    """Handle options flow for Chuangmi Liberator WebRTC."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
+        """Manage the options."""
+        errors = {}
+        opts = dict(self.config_entry.options)
+
+        if user_input is not None:
+            api_p = user_input.get(CONF_GO2RTC_API_PORT, DEFAULT_API_PORT)
+            rtsp_p = user_input.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_RTSP_PORT)
+            webrtc_p = user_input.get(CONF_GO2RTC_WEBRTC_PORT, DEFAULT_WEBRTC_PORT)
+
+            # Prevent conflict with official primary go2rtc
+            if api_p in PRIMARY_RESERVED_PORTS or rtsp_p in PRIMARY_RESERVED_PORTS or webrtc_p in PRIMARY_RESERVED_PORTS:
+                errors["base"] = "port_reserved_primary"
+            elif len({api_p, rtsp_p, webrtc_p}) < 3:
+                errors["base"] = "ports_must_be_distinct"
+            else:
+                return self.async_create_entry(title="", data=user_input)
+
+        # Autodetect free ports as default if not already set
+        detected_api = await self.hass.async_add_executor_job(
+            find_available_port, opts.get(CONF_GO2RTC_API_PORT, DEFAULT_API_PORT), DEFAULT_API_PORT
+        )
+        detected_rtsp = await self.hass.async_add_executor_job(
+            find_available_port, opts.get(CONF_GO2RTC_RTSP_PORT, DEFAULT_RTSP_PORT), DEFAULT_RTSP_PORT
+        )
+        detected_webrtc = await self.hass.async_add_executor_job(
+            find_available_port, opts.get(CONF_GO2RTC_WEBRTC_PORT, DEFAULT_WEBRTC_PORT), DEFAULT_WEBRTC_PORT
+        )
+
+        schema = vol.Schema({
+            vol.Optional(
+                CONF_GO2RTC_API_PORT,
+                default=opts.get(CONF_GO2RTC_API_PORT, detected_api)
+            ): vol.All(vol.Coerce(int), vol.Range(min=1024, max=65535)),
+            vol.Optional(
+                CONF_GO2RTC_RTSP_PORT,
+                default=opts.get(CONF_GO2RTC_RTSP_PORT, detected_rtsp)
+            ): vol.All(vol.Coerce(int), vol.Range(min=1024, max=65535)),
+            vol.Optional(
+                CONF_GO2RTC_WEBRTC_PORT,
+                default=opts.get(CONF_GO2RTC_WEBRTC_PORT, detected_webrtc)
+            ): vol.All(vol.Coerce(int), vol.Range(min=1024, max=65535)),
+            vol.Optional(
+                CONF_ENABLE_BRIDGE,
+                default=opts.get(CONF_ENABLE_BRIDGE, DEFAULT_ENABLE_BRIDGE)
+            ): bool,
+            vol.Optional(
+                CONF_PRIMARY_GO2RTC_URL,
+                default=opts.get(CONF_PRIMARY_GO2RTC_URL, DEFAULT_PRIMARY_GO2RTC_URL)
+            ): str,
+            vol.Optional(
+                CONF_LOG_LEVEL,
+                default=opts.get(CONF_LOG_LEVEL, DEFAULT_LOG_LEVEL)
+            ): vol.In(["info", "debug", "trace", "warn"]),
+        })
+
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)

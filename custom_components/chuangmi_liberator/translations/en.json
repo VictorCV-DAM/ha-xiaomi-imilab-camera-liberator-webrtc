@@ -107,6 +107,9 @@
       "restart": {
         "name": "Restart Camera"
       },
+      "record_clip": {
+        "name": "Record Clip (30s)"
+      },
       "ptz_up": {
         "name": "Move Up"
       },

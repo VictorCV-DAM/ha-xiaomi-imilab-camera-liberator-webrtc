@@ -62,6 +62,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         buttons.append(
             ChuangmiRestartButton(hass, did, name, ip, token, model)
         )
+        buttons.append(
+            ChuangmiRecordButton(hass, did, name, ip, token, model)
+        )
 
         for dir_key, dir_icon, op_code in PTZ_DIRECTIONS:
             buttons.append(
@@ -182,3 +185,76 @@ class ChuangmiPTZButton(ButtonEntity):
                 await asyncio.sleep(0.04)
             except Exception as err:
                 _LOGGER.error("Error sending PTZ command to camera %s: %s", self._ip, err)
+
+
+class ChuangmiRecordButton(ButtonEntity):
+    _attr_has_entity_name = True
+    _attr_translation_key = "record_clip"
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        did: str,
+        device_name: str,
+        ip: str,
+        token: str,
+        model: str,
+    ):
+        self.hass = hass
+        self._did = did
+        self._device_name = device_name
+        self._ip = ip
+        self._token = token
+        self._model = model
+        self._attr_unique_id = f"{DOMAIN}_{did}_record_clip"
+        self._attr_icon = "mdi:record-rec"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"did": self._did}
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._did)},
+            name=self._device_name,
+            manufacturer="Chuangmi / Xiaomi",
+            model=self._model,
+        )
+
+    async def async_press(self) -> None:
+        """Trigger a 30-second recording clip saved to HA storage/www."""
+        import os
+        import time
+
+        target_camera = None
+        for eid in self.hass.states.async_entity_ids("camera"):
+            state = self.hass.states.get(eid)
+            attrs = state.attributes if state else {}
+            if attrs.get("did") == self._did or f"_{self._did}" in eid or self._did in eid:
+                target_camera = eid
+                break
+
+        if not target_camera:
+            target_camera = f"camera.chuangmi_{self._did}"
+
+        save_dir = self.hass.config.path("www", "recordings")
+        os.makedirs(save_dir, exist_ok=True)
+        filename = os.path.join(save_dir, f"chuangmi_{self._did}_{int(time.time())}.mp4")
+
+        _LOGGER.info("Recording 30s clip for %s -> %s", target_camera, filename)
+        try:
+            await self.hass.services.async_call(
+                "camera",
+                "record",
+                {
+                    "entity_id": target_camera,
+                    "filename": filename,
+                    "duration": 30,
+                    "lookback": 2,
+                },
+                blocking=False,
+            )
+        except Exception as err:
+            _LOGGER.error("Failed to trigger camera.record for %s: %s", target_camera, err)
+

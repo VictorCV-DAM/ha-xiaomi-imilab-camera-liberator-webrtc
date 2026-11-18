@@ -107,6 +107,9 @@
       "restart": {
         "name": "Reiniciar"
       },
+      "record_clip": {
+        "name": "Grabar Clip (30s)"
+      },
       "ptz_up": {
         "name": "Mover Arriba"
       },

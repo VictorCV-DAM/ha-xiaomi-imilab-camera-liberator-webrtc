@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.4)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.5)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -27,9 +27,10 @@ try {
 
 const CARD_I18N = {
   es: {
-    talk: 'HABLAR',
-    talking: 'HABLANDO...',
-    talk_tooltip: 'Mantener pulsado o hacer clic para hablar (Intercomunicador)',
+    record: 'GRABAR',
+    recording: 'REC',
+    record_tooltip: 'Hacer clic para grabar vídeo en directo / Detener grabación',
+    record_saved: '¡Grabación guardada!',
     flip: 'Invertir',
     flip_tooltip: 'Invertir imagen 180°',
     night: 'Modo Noche',
@@ -43,16 +44,17 @@ const CARD_I18N = {
     editor_title: 'Título de la tarjeta:',
     editor_title_placeholder: 'Cámara Entrada (2K PTZ)',
     editor_select_camera: 'Seleccionar Cámara Chuangmi / Xiaomi:',
-    editor_helper: '✨ Detección automática: la cruceta PTZ, el micrófono bidireccional y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
+    editor_helper: '✨ Detección automática: la cruceta PTZ, el botón de grabación y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
     card_name: 'Tarjeta Cámara Chuangmi PTZ',
-    card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, audio bidireccional y controles locales para cámaras Chuangmi / Imilab.',
+    card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, grabación instantánea y controles locales para cámaras Chuangmi / Imilab.',
     badge: '2K WEBRTC',
     default_title: 'Cámara Chuangmi PTZ'
   },
   en: {
-    talk: 'TALK',
-    talking: 'TALKING...',
-    talk_tooltip: 'Click or hold to talk (Intercom)',
+    record: 'RECORD',
+    recording: 'REC',
+    record_tooltip: 'Click to record live video / Stop recording',
+    record_saved: 'Recording saved!',
     flip: 'Flip 180°',
     flip_tooltip: 'Flip image 180°',
     night: 'Night Mode',
@@ -66,9 +68,9 @@ const CARD_I18N = {
     editor_title: 'Card title:',
     editor_title_placeholder: 'Entrance Camera (2K PTZ)',
     editor_select_camera: 'Select Chuangmi / Xiaomi Camera:',
-    editor_helper: '✨ Auto-detection: the PTZ D-pad, two-way microphone, and action buttons link automatically without manual IDs.',
+    editor_helper: '✨ Auto-detection: the PTZ D-pad, recording button, and action buttons link automatically without manual IDs.',
     card_name: 'Chuangmi PTZ Camera Card',
-    card_desc: '2K live WebRTC streaming with PTZ controls, two-way audio, and local controls for Chuangmi / Imilab cameras.',
+    card_desc: '2K live WebRTC streaming with PTZ controls, instant recording, and local controls for Chuangmi / Imilab cameras.',
     badge: '2K WEBRTC',
     default_title: 'Chuangmi PTZ Camera'
   }
@@ -138,9 +140,11 @@ class ChuangmiPTZCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._hass = null;
     this._config = {};
-    this._isTalking = false;
-    this._micStream = null;
-    this._micAudioTrack = null;
+    this._isRecording = false;
+    this._mediaRecorder = null;
+    this._recordChunks = [];
+    this._recordTimer = null;
+    this._recordSeconds = 0;
     this._rendered = false;
     this._discoveredEntities = {};
   }
@@ -172,7 +176,8 @@ class ChuangmiPTZCard extends HTMLElement {
           const streamName = this._resolveStreamName(this._config.camera_entity);
           if (streamName) {
             try {
-              webrtc.setConfig({ url: streamName, mode: 'webrtc' });
+              webrtc.setConfig({ url: streamName, mode: 'webrtc', muted: true });
+              webrtc.muted = true;
             } catch (e) {}
           }
         }
@@ -255,6 +260,7 @@ class ChuangmiPTZCard extends HTMLElement {
       ptz_down: '',
       ptz_left: '',
       ptz_right: '',
+      record_clip: '',
       flip: '',
       night: '',
       sleep: ''
@@ -278,6 +284,7 @@ class ChuangmiPTZCard extends HTMLElement {
         else if (eidLower.includes('down') || eidLower.includes('abajo') || fnLower.includes('down')) found.ptz_down = eid;
         else if (eidLower.includes('left') || eidLower.includes('izquierda') || fnLower.includes('left')) found.ptz_left = eid;
         else if (eidLower.includes('right') || eidLower.includes('derecha') || fnLower.includes('right')) found.ptz_right = eid;
+        else if (eidLower.includes('record') || eidLower.includes('grabar')) found.record_clip = eid;
       } else if (eid.startsWith('switch.')) {
         if (eidLower.includes('flip') || eidLower.includes('voltear') || fnLower.includes('flip')) found.flip = eid;
         else if (eidLower.includes('power') || eidLower.includes('reposo') || eidLower.includes('sleep') || fnLower.includes('power') || fnLower.includes('sleep')) found.sleep = eid;
@@ -307,75 +314,115 @@ class ChuangmiPTZCard extends HTMLElement {
     this._hass.callService('select', 'select_option', { entity_id: entityId, option: next });
   }
 
-  async _toggleMicrophone() {
+  async _toggleRecording() {
     const i18n = getCardI18n(this._hass);
     const centerBtn = this.shadowRoot.getElementById('btnCenter');
     const label = this.shadowRoot.getElementById('centerLabel');
 
-    if (!this._isTalking) {
-      try {
-        this._micStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-        this._micAudioTrack = this._micStream.getAudioTracks()[0];
-        this._isTalking = true;
-        if (centerBtn) centerBtn.classList.add('talking');
-        if (label) label.innerText = i18n.talking;
+    if (!this._isRecording) {
+      this._isRecording = true;
+      this._recordSeconds = 0;
+      if (centerBtn) {
+        centerBtn.classList.add('recording');
+        centerBtn.classList.add('active');
+      }
+      if (label) label.textContent = `● ${i18n.recording} 00:00`;
 
-        const streamName = this._resolveStreamName(this._config.camera_entity);
-        if (streamName && window.RTCPeerConnection) {
-          this._startWebRTCAudioPush(streamName);
+      // Live second timer
+      this._recordTimer = setInterval(() => {
+        this._recordSeconds++;
+        const mins = String(Math.floor(this._recordSeconds / 60)).padStart(2, '0');
+        const secs = String(this._recordSeconds % 60).padStart(2, '0');
+        if (label) label.textContent = `● ${i18n.recording} ${mins}:${secs}`;
+      }, 1000);
+
+      // Trigger complementary HA backend record service if entity exists
+      if (this._discoveredEntities.record_clip) {
+        this._callButton(this._discoveredEntities.record_clip);
+      }
+
+      // Record directly from WebRTC video element in the browser
+      try {
+        const webrtc = this.shadowRoot.querySelector('webrtc-camera');
+        const video = webrtc?.shadowRoot?.querySelector('video') || webrtc?.querySelector('video') || this.shadowRoot.querySelector('video');
+
+        if (video) {
+          const stream = video.captureStream ? video.captureStream() : (video.srcObject || null);
+          if (stream) {
+            let options = {};
+            if (window.MediaRecorder) {
+              if (MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
+                options = { mimeType: 'video/mp4;codecs=avc1' };
+              } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
+                options = { mimeType: 'video/webm;codecs=vp8,opus' };
+              } else if (MediaRecorder.isTypeSupported('video/webm')) {
+                options = { mimeType: 'video/webm' };
+              }
+
+              this._recordChunks = [];
+              this._mediaRecorder = new MediaRecorder(stream, options);
+              this._mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                  this._recordChunks.push(e.data);
+                }
+              };
+              this._mediaRecorder.start(1000);
+            }
+          }
         }
       } catch (err) {
-        console.warn('Microphone access error:', err);
-        alert('Microphone access permission error: ' + err.message);
+        console.debug('MediaRecorder browser start error:', err);
       }
     } else {
-      if (this._micStream) {
-        this._micStream.getTracks().forEach(t => t.stop());
-        this._micStream = null;
-        this._micAudioTrack = null;
+      // Stop recording
+      if (this._recordTimer) {
+        clearInterval(this._recordTimer);
+        this._recordTimer = null;
       }
-      if (this._audioPeerConnection) {
-        try { this._audioPeerConnection.close(); } catch (_) {}
-        this._audioPeerConnection = null;
+      this._isRecording = false;
+
+      if (centerBtn) {
+        centerBtn.classList.remove('recording');
+        centerBtn.classList.remove('active');
       }
-      this._isTalking = false;
-      if (centerBtn) centerBtn.classList.remove('talking');
-      if (label) label.innerText = i18n.talk;
-    }
-  }
+      if (label) label.textContent = i18n.record;
 
-  async _startWebRTCAudioPush(streamName) {
-    try {
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
-      this._audioPeerConnection = pc;
+      if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') {
+        try {
+          this._mediaRecorder.onstop = () => {
+            if (this._recordChunks && this._recordChunks.length > 0) {
+              const mime = this._mediaRecorder?.mimeType || 'video/webm';
+              const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+              const blob = new Blob(this._recordChunks, { type: mime });
+              const url = URL.createObjectURL(blob);
+              const camState = this._hass && this._config.camera_entity ? this._hass.states[this._config.camera_entity] : null;
+              const title = getCameraAssignedName(camState, this._config, this._hass).replace(/[^a-zA-Z0-9_-]/g, '_');
+              const now = new Date();
+              const dateStr = now.toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `Grabacion_${title}_${dateStr}.${ext}`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              setTimeout(() => URL.revokeObjectURL(url), 6000);
 
-      if (this._micAudioTrack) {
-        pc.addTrack(this._micAudioTrack, this._micStream);
+              if (label) {
+                label.textContent = i18n.record_saved;
+                setTimeout(() => {
+                  if (!this._isRecording && label) label.textContent = i18n.record;
+                }, 2500);
+              }
+            }
+            this._mediaRecorder = null;
+            this._recordChunks = [];
+          };
+          this._mediaRecorder.stop();
+        } catch (err) {
+          console.warn('Error stopping MediaRecorder:', err);
+          this._mediaRecorder = null;
+        }
       }
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      const response = await fetch(`/api/go2rtc/webrtc?src=${encodeURIComponent(streamName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ sdp: offer.sdp })
-      });
-
-      if (response.ok) {
-        const answer = await response.text();
-        await pc.setRemoteDescription({ type: 'answer', sdp: answer });
-      }
-    } catch (e) {
-      console.debug('WebRTC audio backchannel negotiation:', e);
     }
   }
 
@@ -491,10 +538,10 @@ class ChuangmiPTZCard extends HTMLElement {
           width: 72px;
           height: 72px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          background: radial-gradient(circle, #1e2430 0%, #12151c 100%);
           border: 3px solid #101216;
-          color: #ffffff;
-          box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+          color: #94a3b8;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
           cursor: pointer;
           display: flex;
           flex-direction: column;
@@ -505,22 +552,31 @@ class ChuangmiPTZCard extends HTMLElement {
           outline: none;
           z-index: 2;
         }
+        .btn-center svg {
+          fill: #ef4444;
+          transition: transform 0.2s ease, fill 0.2s ease;
+        }
         .btn-center:hover {
-          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+          background: radial-gradient(circle, #252d3d 0%, #161b24 100%);
+          color: #f1f5f9;
           transform: scale(1.05);
         }
         .btn-center:active {
           transform: scale(0.95);
         }
-        .btn-center.talking {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          box-shadow: 0 0 25px rgba(239, 68, 68, 0.8);
-          animation: pulse-talking 1.5s infinite;
+        .btn-center.active, .btn-center.recording {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: #ffffff;
+          box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+          animation: pulse-recording 1.5s infinite;
         }
-        @keyframes pulse-talking {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          70% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .btn-center.active svg, .btn-center.recording svg {
+          fill: #ffffff;
+        }
+        @keyframes pulse-recording {
+          0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+          70% { box-shadow: 0 0 0 14px rgba(16, 185, 129, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
         .center-label {
           font-size: 0.58rem;
@@ -598,12 +654,12 @@ class ChuangmiPTZCard extends HTMLElement {
               </svg>
             </button>
 
-            <!-- CENTER BUTTON: TWO-WAY INTERCOM / MICROPHONE -->
-            <button class="btn-center" id="btnCenter" title="${i18n.talk_tooltip}">
-              <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-                <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+            <!-- CENTER BUTTON: QUICK VIDEO RECORDING -->
+            <button class="btn-center" id="btnCenter" title="${i18n.record_tooltip}">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                <circle cx="12" cy="12" r="7"/>
               </svg>
-              <span class="center-label" id="centerLabel">${i18n.talk}</span>
+              <span class="center-label" id="centerLabel">${i18n.record}</span>
             </button>
 
             <button class="dpad-btn btn-right" id="btnRight" title="${i18n.right}">
@@ -650,12 +706,27 @@ class ChuangmiPTZCard extends HTMLElement {
         const webrtc = document.createElement('webrtc-camera');
         webrtc.setConfig({
           url: streamName,
-          mode: 'webrtc'
+          mode: 'webrtc',
+          muted: true
         });
+        webrtc.muted = true;
         if (this._hass) {
           webrtc.hass = this._hass;
         }
         container.appendChild(webrtc);
+
+        // Ensure video stream is completely muted by default
+        const enforceMute = () => {
+          const v = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video') || webrtc.video;
+          if (v) {
+            v.muted = true;
+            v.defaultMuted = true;
+          }
+        };
+        enforceMute();
+        setTimeout(enforceMute, 300);
+        setTimeout(enforceMute, 1200);
+        setTimeout(enforceMute, 2500);
       } catch (err) {
         console.warn('Could not initialize webrtc-camera in card:', err);
       }
@@ -703,8 +774,8 @@ class ChuangmiPTZCard extends HTMLElement {
     this.shadowRoot.getElementById('btnLeft').onclick = () => triggerPtz('btnLeft', 'left');
     this.shadowRoot.getElementById('btnRight').onclick = () => triggerPtz('btnRight', 'right');
 
-    // Center button: Microphone intercom
-    this.shadowRoot.getElementById('btnCenter').onclick = () => this._toggleMicrophone();
+    // Center button: Quick Recording
+    this.shadowRoot.getElementById('btnCenter').onclick = () => this._toggleRecording();
 
     // 3 Action buttons
     this.shadowRoot.getElementById('btnFlip').onclick = () => this._callSwitch(this._discoveredEntities.flip);
@@ -728,25 +799,36 @@ class ChuangmiPTZCard extends HTMLElement {
       }
     }
 
-    // Flip button state
+    // 1. Flip button state: VERDE si volteada 180°, GRIS si normal 0°
     const flipBtn = this.shadowRoot.getElementById('btnFlip');
     if (flipBtn && this._discoveredEntities.flip) {
       const state = this._hass.states[this._discoveredEntities.flip]?.state;
-      flipBtn.classList.toggle('active', state === 'on');
+      const isFlipped = (state === 'on' || state === '180');
+      flipBtn.classList.toggle('active', isFlipped);
     }
 
-    // Night mode button state
+    // 2. Modo Noche: VERDE sólo si está forzada activa ('always_on' / 'on' / '2'), GRIS si auto o apagada
     const nightBtn = this.shadowRoot.getElementById('btnNight');
     if (nightBtn && this._discoveredEntities.night) {
-      const state = this._hass.states[this._discoveredEntities.night]?.state;
-      nightBtn.classList.toggle('active', state === 'always_on' || state === 'auto');
+      const state = (this._hass.states[this._discoveredEntities.night]?.state || '').toLowerCase();
+      const isNightForced = (state === 'always_on' || state === 'on' || state === '2');
+      nightBtn.classList.toggle('active', isNightForced);
     }
 
-    // Privacy / Sleep button state
+    // 3. Privacidad: VERDE sólo si privacidad activa (cámara en reposo/apagada), GRIS si transmitiendo normal
     const sleepBtn = this.shadowRoot.getElementById('btnSleep');
-    if (sleepBtn && this._discoveredEntities.sleep) {
-      const state = this._hass.states[this._discoveredEntities.sleep]?.state;
-      sleepBtn.classList.toggle('active', state === 'off');
+    const sleepEntity = this._discoveredEntities.sleep;
+    if (sleepBtn && sleepEntity) {
+      const state = this._hass.states[sleepEntity]?.state;
+      let isPrivacyActive = false;
+      if (sleepEntity.includes('power') || sleepEntity.includes('energia')) {
+        // En switches de corriente: 'off' significa que la cámara está en reposo/apagada (privacidad activa)
+        isPrivacyActive = (state === 'off');
+      } else {
+        // En switches dedicados de privacidad: 'on' significa privacidad activa
+        isPrivacyActive = (state === 'on');
+      }
+      sleepBtn.classList.toggle('active', isPrivacyActive);
     }
   }
 
@@ -950,7 +1032,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.4 USER-ASSIGNED-TITLES & DIRECT-WEBRTC ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.5 RECORD-MUTE-ILLUMINATION & DIRECT-WEBRTC ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

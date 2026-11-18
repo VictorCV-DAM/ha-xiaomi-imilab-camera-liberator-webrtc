@@ -48,7 +48,7 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.CAMERA, Platform.SWITCH, Platform.SELECT, Platform.BUTTON]
 CARD_URL = "/chuangmi_liberator/chuangmi-ptz-card.js"
-CARD_VERSION = "1.6.8"
+CARD_VERSION = "1.6.9"
 
 try:
     from homeassistant.components.frontend import add_extra_js_url
@@ -147,7 +147,7 @@ async def _async_discover_all_cameras(hass: HomeAssistant, client: XiaomiClient,
                                     did = str(dev.get("did", ""))
                                     ip = dev.get("localip") or dev.get("ip", "")
                                     token = dev.get("token", "")
-                                    name = dev.get("name") or f"Camera {did}"
+                                    name = dev.get("name") or f"Cámara {did}"
                                     if did and ip and token:
                                         res[did] = {
                                             CONF_CAMERA_DID: did,
@@ -172,7 +172,7 @@ async def _async_discover_all_cameras(hass: HomeAssistant, client: XiaomiClient,
                 did = str(dev.get("did", ""))
                 ip = dev.get("localip") or dev.get("ip", "")
                 token = dev.get("token", "")
-                name = dev.get("name") or f"Camera {did}"
+                name = dev.get("name") or f"Cámara {did}"
                 if did and (ip or did in discovered):
                     if did in discovered and not ip:
                         ip = discovered[did][CONF_CAMERA_IP]

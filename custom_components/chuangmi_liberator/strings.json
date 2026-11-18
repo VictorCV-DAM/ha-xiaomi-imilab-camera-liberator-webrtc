@@ -3,130 +3,133 @@
     "step": {
       "user": {
         "title": "Chuangmi Liberator WebRTC",
-        "description": "Enter your Xiaomi Cloud credentials to automatically discover all your cameras, or leave fields blank and click Submit to use **Local Auto-Detection**.",
+        "description": "Introduce tus credenciales de Xiaomi Cloud para descubrir automáticamente tus cámaras, o déjalas en blanco y pulsa Enviar para usar **Detección Local Automática**.",
         "data": {
-          "username": "Xiaomi Email or User ID (Optional)",
-          "password": "Password (Optional)",
-          "server_country": "Server / Country"
+          "username": "Email o ID de Usuario Xiaomi (Opcional)",
+          "password": "Contraseña (Opcional)",
+          "server_country": "Servidor / País"
         },
         "data_description": {
-          "username": "Your Xiaomi Mi Home account identifier. Leave blank for direct local/token setup.",
-          "password": "Your Xiaomi password. Leave blank to skip cloud login.",
-          "server_country": "Xiaomi cloud server region (de = Europe, cn = China, us = United States)."
+          "username": "Tu cuenta de Xiaomi Mi Home. Déjalo en blanco para configuración local directa por token.",
+          "password": "Tu contraseña de Xiaomi. Déjalo en blanco si prefieres autodescubrimiento local.",
+          "server_country": "Región del servidor Xiaomi Cloud (de = Europa, cn = China, us = Estados Unidos)."
         }
       },
       "select_camera": {
-        "title": "Select Cameras",
-        "description": "The following cameras were automatically discovered in your Xiaomi account/network. All discovered cameras are selected by default to be liberated into Home Assistant:",
+        "title": "Seleccionar Cámaras",
+        "description": "Las siguientes cámaras fueron descubiertas en tu red/cuenta. Selecciona las que deseas liberar en Home Assistant:",
         "data": {
-          "cameras": "Cameras to liberate"
+          "cameras": "Cámaras a liberar"
         },
         "data_description": {
-          "cameras": "Select which cameras to add to Home Assistant."
+          "cameras": "Selecciona las cámaras a añadir."
         }
       },
       "manual": {
-        "title": "Manual Camera Setup & Instructions",
-        "description": "### 🔓 Camera Setup Instructions\n\nConfigure your Chuangmi / Xiaomi camera parameters to enable **low-latency WebRTC live streaming** and local controls without cloud throttling.\n\n*(✨ If your camera is already registered in Home Assistant or Xiaomi Miot, detected parameters have been pre-filled automatically below).* \n\n---\n#### 📖 Parameter Guide & Useful Links:\n- **Device ID (DID):** Unique numeric identifier of your camera in Xiaomi Cloud (9 to 10 digits).\n- **Local IP:** Local network IP address assigned by your router (e.g. `192.168.1.50`). Required for fast stream routing and zero-latency local controls.\n- **Token (32 hex):** 32-character miIO encryption token required for direct local UDP control of privacy mode, blue status LED, and night vision.\n  - 🔗 **How to get your Token and DID?** If you don't have them, extract them easily using the open-source tool: [Xiaomi Cloud Tokens Extractor (GitHub)](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor).\n- **Model:** Hardware model identifier (e.g. `chuangmi.camera.ipc019e`).",
+        "title": "Configuración Manual e Instrucciones",
+        "description": "### 🔓 Instrucciones de Configuración y Liberación\n\nConfigura tu cámara Chuangmi / Xiaomi para obtener streaming **WebRTC en directo sin cortes** y control local por UDP.\n\n*(✨ Si tu cámara ya estaba vinculada en Home Assistant o Xiaomi Miot, los datos detectados se han rellenado automáticamente a continuación).* \n\n---\n#### 📖 Guía de Parámetros y Enlaces:\n- **Device ID (DID):** Identificador numérico único de tu cámara en Xiaomi Cloud (número de 9 o 10 dígitos).\n- **IP Local:** La dirección IP asignada a la cámara en tu red local (LAN) por el router (ej. `192.168.1.50`). Permite streaming WebRTC fluido y controles locales instantáneos sin depender de la nube.\n- **Token miIO (32 hex):** Clave de cifrado de 32 caracteres necesaria para el control directo por UDP local (modo noche, luz led de estado, modo privacidad/apagado).\n  - 🔗 **¿Cómo obtener el Token y DID?** Si no los tienes, puedes extraerlos en 1 minuto usando la herramienta comunitaria: [Xiaomi Cloud Tokens Extractor (GitHub)](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor).\n- **Modelo:** Código de hardware de tu cámara (por ejemplo `chuangmi.camera.ipc019e`).",
         "data": {
           "camera_did": "Device ID (DID)",
-          "camera_ip": "Local IP",
-          "camera_token": "Token (32 hex)",
-          "camera_model": "Model"
+          "camera_ip": "IP Local",
+          "camera_token": "Token miIO (32 hex)",
+          "camera_model": "Modelo"
         },
         "data_description": {
-          "camera_did": "Numeric identifier of the camera in Xiaomi Cloud (e.g. 123456789).",
-          "camera_ip": "Local IP address on your home network (e.g. 192.168.1.50).",
-          "camera_token": "32-character hexadecimal key for local UDP control.",
-          "camera_model": "Hardware model identifier (e.g. chuangmi.camera.ipc019e)."
+          "camera_did": "Identificador numérico único de la cámara (ej: 123456789).",
+          "camera_ip": "Dirección IP local en tu red doméstica asignada por el router (ej: 192.168.1.50).",
+          "camera_token": "Clave hexadecimal de 32 caracteres para control directo por UDP local.",
+          "camera_model": "Identificador de hardware del fabricante (ej: chuangmi.camera.ipc019e)."
         }
       }
     },
     "error": {
-      "invalid_auth": "Invalid Xiaomi credentials.",
-      "cannot_connect": "Failed to connect to Xiaomi servers.",
-      "required": "This field is required."
+      "invalid_auth": "Credenciales de Xiaomi inválidas.",
+      "cannot_connect": "No se pudo conectar a los servidores de Xiaomi.",
+      "required": "Este campo es obligatorio."
     },
     "abort": {
-      "already_configured": "This camera is already configured in Chuangmi Liberator."
+      "already_configured": "Esta cámara ya está configurada en Chuangmi Liberator."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Chuangmi Liberator & Coexistence Configuration",
-        "description": "Configure dedicated ports and coexistence settings with your primary go2rtc service. Ports are automatically checked to ensure they are free.",
+        "title": "Configuración de Coexistencia y Puertos",
+        "description": "Configura los puertos dedicados y los ajustes de coexistencia con tu servicio go2rtc principal. Los puertos se verifican automáticamente para asegurar que estén libres.",
         "data": {
-          "api_port": "Internal go2rtc API Port",
-          "rtsp_port": "Internal RTSP Port",
-          "webrtc_port": "Internal WebRTC Port",
-          "enable_primary_bridge": "Enable automatic bridge to Primary go2rtc",
-          "primary_go2rtc_url": "Primary go2rtc API URL",
-          "log_level": "Internal Log Level"
+          "api_port": "Puerto API interno de go2rtc",
+          "rtsp_port": "Puerto RTSP interno",
+          "webrtc_port": "Puerto WebRTC interno",
+          "enable_primary_bridge": "Habilitar puente automático con go2rtc principal",
+          "primary_go2rtc_url": "URL API de go2rtc principal",
+          "log_level": "Nivel de log interno"
         },
         "data_description": {
-          "api_port": "Port used by the isolated daemon for API calls. Ports 1984, 8554, and 8555 are protected for your primary go2rtc.",
-          "rtsp_port": "Port used by the isolated daemon for local RTSP streams.",
-          "webrtc_port": "Port used by the isolated daemon for WebRTC signalling.",
-          "enable_primary_bridge": "Automatically register Chuangmi cameras into your primary go2rtc on port 1984 so they appear seamlessly in your main Web UI and cards.",
-          "primary_go2rtc_url": "Base URL of your primary go2rtc (default: http://127.0.0.1:1984).",
-          "log_level": "Logging verbosity of the background go2rtc instance."
+          "api_port": "Puerto utilizado por el proceso aislado. Los puertos 1984, 8554 y 8555 están reservados para tu go2rtc principal y evitar colisiones.",
+          "rtsp_port": "Puerto para el servidor RTSP interno de las cámaras Chuangmi.",
+          "webrtc_port": "Puerto para la negociación WebRTC interna.",
+          "enable_primary_bridge": "Registra automáticamente las cámaras en tu go2rtc principal en el puerto 1984 para que aparezcan en tu interfaz y tarjetas sin configuración manual.",
+          "primary_go2rtc_url": "Dirección base de tu go2rtc principal (por defecto: http://127.0.0.1:1984).",
+          "log_level": "Detalle del registro del proceso go2rtc en segundo plano."
         }
       }
     },
     "error": {
-      "port_reserved_primary": "Ports 1984, 8554, and 8555 are reserved for your primary go2rtc to prevent collisions.",
-      "ports_must_be_distinct": "API, RTSP, and WebRTC ports must be different from each other."
+      "port_reserved_primary": "Los puertos 1984, 8554 y 8555 están reservados para tu go2rtc principal para evitar colisiones.",
+      "ports_must_be_distinct": "Los puertos API, RTSP y WebRTC deben ser distintos entre sí."
     }
   },
   "entity": {
     "switch": {
       "power": {
-        "name": "Sleep Mode / Power"
+        "name": "Modo Reposo / Energía"
       },
       "light": {
-        "name": "Status LED"
+        "name": "Luz LED de Estado"
       },
       "flip": {
-        "name": "Flip Image 180°"
+        "name": "Voltear Imagen 180°"
       },
       "watermark": {
-        "name": "Timestamp Watermark"
+        "name": "Marca de Agua Fecha/Hora"
       },
       "wdr": {
-        "name": "WDR Backlight Mode"
+        "name": "Modo WDR Contraluz"
       },
       "full_color": {
-        "name": "Low Light Full Color"
+        "name": "Color con Baja Luz"
       },
       "motion_record": {
-        "name": "Motion Recording"
+        "name": "Grabación por Movimiento"
       }
     },
     "button": {
       "restart": {
-        "name": "Restart Camera"
+        "name": "Reiniciar"
+      },
+      "record_clip": {
+        "name": "Grabar Clip (30s)"
       },
       "ptz_up": {
-        "name": "Move Up"
+        "name": "Mover Arriba"
       },
       "ptz_down": {
-        "name": "Move Down"
+        "name": "Mover Abajo"
       },
       "ptz_left": {
-        "name": "Move Left"
+        "name": "Mover Izquierda"
       },
       "ptz_right": {
-        "name": "Move Right"
+        "name": "Mover Derecha"
       }
     },
     "select": {
       "night_mode": {
-        "name": "Night Vision",
+        "name": "Visión Nocturna",
         "state": {
-          "auto": "Auto",
-          "always_on": "Always On",
-          "off": "Off"
+          "auto": "Automático",
+          "always_on": "Siempre Activa",
+          "off": "Apagada"
         }
       }
     }

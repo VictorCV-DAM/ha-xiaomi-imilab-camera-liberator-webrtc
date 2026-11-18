@@ -66,7 +66,7 @@ async def async_autodetect_all_cameras(hass) -> List[Dict[str, Any]]:
                                         "did": did,
                                         "token": str(d.get("token", "")),
                                         "model": str(d.get("model", "chuangmi.camera.ipc019e")),
-                                        "name": d.get("name") or f"Camera {did}",
+                                        "name": d.get("name") or f"Cámara {did}",
                                         "mac": str(d.get("mac", "")).upper().replace("-", ":"),
                                         "localip": str(d.get("localip", "")),
                                     })
@@ -182,7 +182,7 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_CAMERA_IP: d.get("localip", ""),
                         CONF_CAMERA_TOKEN: d.get("token", ""),
                         CONF_CAMERA_MODEL: d.get("model", "chuangmi.camera.ipc019e"),
-                        "name": d.get("name") or f"Camera {did}",
+                        "name": d.get("name") or f"Cámara {did}",
                     })
 
                 entry_data = {
@@ -229,7 +229,7 @@ class ChuangmiLiberatorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_CAMERA_IP: ip,
                     CONF_CAMERA_TOKEN: token,
                     CONF_CAMERA_MODEL: model,
-                    "name": f"Camera {did}",
+                    "name": f"Cámara {did}",
                 }]
                 entry_data = {
                     **self.account_data,

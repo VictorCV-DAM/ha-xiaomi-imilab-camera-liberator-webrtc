@@ -44,7 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         token = c.get(CONF_CAMERA_TOKEN, "")
         did = str(c.get(CONF_CAMERA_DID, ""))
         model = c.get(CONF_CAMERA_MODEL, "chuangmi.camera.ipc019e")
-        name = c.get("name") or f"Camera {did}"
+        name = c.get("name") or f"Cámara {did}"
 
         if not ip or not token or not did:
             continue

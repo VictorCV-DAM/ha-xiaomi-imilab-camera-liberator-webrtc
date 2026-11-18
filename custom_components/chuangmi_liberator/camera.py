@@ -131,7 +131,7 @@ async def async_setup_entry(
             hass=hass,
             client=client,
             did=did,
-            name=c.get("name") or f"Camera {did}",
+            name=c.get("name") or f"Cámara {did}",
             ip=c.get(CONF_CAMERA_IP, ""),
             token=c.get(CONF_CAMERA_TOKEN, ""),
             model=c.get(CONF_CAMERA_MODEL, "chuangmi.camera.ipc019e"),

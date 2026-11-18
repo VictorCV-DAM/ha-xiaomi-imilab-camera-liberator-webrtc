@@ -1,35 +1,43 @@
 <p align="center">
-  <img src="images/icon_512.png" width="160" alt="Chuangmi Liberator WebRTC Icon" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+  <img src="images/icon_512.png" width="150" height="150" alt="Chuangmi Liberator WebRTC Icon" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
 </p>
 
-<h1 align="center">Chuangmi Liberator WebRTC</h1>
+<div align="center">
+  <h1>Chuangmi Liberator WebRTC for Home Assistant</h1>
 
-<p align="center">
-  <a href="https://github.com/hacs/integration"><img src="https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge" alt="HACS Custom"></a>
-  <a href="https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases"><img src="https://img.shields.io/github/v/release/VictorCV-DAM/ha-chuangmi-liberator-webrtc?style=for-the-badge&color=blue" alt="GitHub Release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/actions"><img src="https://img.shields.io/github/actions/workflow/status/VictorCV-DAM/ha-chuangmi-liberator-webrtc/validate.yml?style=for-the-badge&label=Hassfest" alt="Hassfest Validation"></a>
-</p>
+  [![HACS](https://img.shields.io/badge/HACS-Custom%20Integration-41BDF5.svg)](https://github.com/hacs/default)
+  [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1.0%20%E2%80%94%202026.9.4%2B-41BDF5.svg?logo=home-assistant)](https://www.home-assistant.io/)
+  [![WebRTC](https://img.shields.io/badge/Streaming-WebRTC%202K%20%2F%20HD-green.svg)](https://github.com/AlexxIT/go2rtc)
+  [![Downloads](https://img.shields.io/github/downloads/VictorCV-DAM/ha-chuangmi-liberator-webrtc/total.svg?color=brightgreen)](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases)
+  [![Latest Release](https://img.shields.io/github/v/release/VictorCV-DAM/ha-chuangmi-liberator-webrtc?color=blue)](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/blob/main/LICENSE)
+  
+  [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/VictorCV)
+  [![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?logo=paypal)](https://paypal.me/victorcava)
+  [![Ko-fi](https://img.shields.io/badge/Ko--fi-Donate-red?logo=ko-fi)](https://ko-fi.com/victorcv)
+</div>
 
 <p align="center">
   <strong>Liberate your Xiaomi / Chuangmi / Imilab cameras in Home Assistant.</strong><br>
-  Ultra-low latency <strong>2K WebRTC live streaming (&lt;200ms)</strong>, <strong>Two-Way Audio (Intercom)</strong>, instant local UDP PTZ motor control, and a dedicated tactile Lovelace PTZ card without cloud subscriptions or throttling.
+  Ultra-low latency <strong>2K & 1080p WebRTC live streaming (&lt;200ms)</strong>, <strong>Instant Quick Video Recording</strong>, local UDP PTZ motor control, and a dedicated tactile Lovelace PTZ card without cloud subscriptions or throttling.
 </p>
 
 ---
 
 ## ⚡ Highlights & Key Features
 
-- **⚡ Real-Time WebRTC Streaming:** Eliminates the annoying 2–5 second cloud latency and buffering of traditional HLS/RTSP streams. Streams are direct and hardware-accelerated via `go2rtc`.
-- **🎙️ Two-Way Audio (Microphone / Intercom):** Speak directly to your camera from your browser or mobile dashboard using the center mic button on the card.
+- **⚡ Zero-Lag WebRTC Streaming (&lt;200ms):** Eliminates the annoying 2–5 second cloud latency and buffering of traditional HLS/RTSP streams. Streams directly via hardware-accelerated `go2rtc` and WebSocket peer negotiation.
+- **🎥 Instant In-Card Video Recording:** Center record button (`RECORD` / `GRABAR`) records live video chunks directly from the browser with an active stopwatch timer (`● RECORDING 00:00`), automatically downloading the MP4/WebM video clip upon completion while triggering the camera's local 30s storage backup.
+- **🎛️ Interactive Resolution Selector Badge:** Switch dynamically between **2K WEBRTC** (maximum native resolution), **HD 1080P** (high-efficiency fluid native stream), and **SD 360P** (lightweight mobile stream). User preferences are remembered and persisted per camera in local storage.
 - **🎮 Tactile Lovelace PTZ Card (`chuangmi-ptz-card`):**
-  - Intuitive circular directional d-pad (Up, Down, Left, Right).
-  - Center talk/intercom button with visual pulsing feedback.
-  - Streamlined 3-action bottom bar: **Invert / Flip 180°**, **Night Vision**, and **Privacy / Sleep Mode**.
-  - Strict dynamic entity filtering — auto-detects and connects only your Chuangmi cameras.
+  - Responsive circular directional D-pad (Up, Down, Left, Right) with hardware gear debouncing.
+  - **Ceiling / Inversion Awareness:** Pressing Up moves the camera visually upward regardless of 0° or 180° inverted ceiling mounting.
+  - Streamlined 3-action bottom bar: **Flip 180°**, **Night Vision**, and **Privacy / Sleep Mode**.
+  - **Entity Details on Click:** Clicking the camera title in the card header opens Home Assistant's native entity/device dialog (`more-info`).
+  - **Seamless Bilingual Localization:** Automatically switches between English and Spanish matching your Home Assistant profile language.
 - **🛡️ 100% Local UDP Controls:** Controls PTZ motor, night mode, status LED, sleep mode, timestamp watermark, and motion recording directly over local network (miIO protocol).
 - **🔄 Dynamic Fleet Discovery:** Automatically finds all your Xiaomi cameras on reload without needing manual IP or token re-entry.
-- **📦 Zero-Configuration Binary Management:** Automatically verifies and serves the patched `go2rtc` binary with native Xiaomi protocol backchannel support.
+- **📦 Zero-Configuration Binary Management:** Automatically verifies, isolates, and bridges with any existing primary `go2rtc` service on port 1984 without port collisions.
 
 ---
 
@@ -46,12 +54,14 @@ title: Front Entrance (2K PTZ)
 ### Card Features:
 | Feature | Description |
 | :--- | :--- |
-| **WebRTC 2K Live** | Instant frame playback without buffering or keyframe lag |
+| **WebRTC 2K / HD Live** | Instant frame playback without buffering or keyframe lag |
+| **Resolution Badge** | Toggle between 2K WEBRTC, HD 1080P, and SD 360P with persistent memory |
 | **PTZ D-Pad** | Motor commands with hardware debouncing to prevent packet collisions |
-| **Center Mic** | Hold or tap to transmit real-time microphone audio to camera |
+| **Instant Video Record** | Record live video clips with real-time timer directly from your dashboard |
 | **Flip 180°** | Toggle image orientation for ceiling or upside-down mounts |
 | **Night Vision** | Cycle through Auto, Always On, and Off |
 | **Privacy Mode** | Instant local sleep / standby mode |
+| **Header More-Info** | Tap the title to open native device settings and controls |
 
 ---
 
@@ -61,11 +71,11 @@ This integration communicates via the native **Xiaomi MISS / CloudRTC** streamin
 
 ### 1. Tested & Verified Working (Production Ready)
 
-| Model Identifier | Commercial Name | Resolution | WebRTC Live | 2-Way Audio | PTZ Control | Local miIO | Status |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `chuangmi.camera.ipc019e` | **Xiaomi Smart Camera 2K / Imilab A1 (CMSXJ19E)** | 2304x1296 (2K) | ✅ | ✅ | ✅ | ✅ | **Verified Working** |
+| Model Identifier | Commercial Name | Resolution | WebRTC Live | Local PTZ | Local miIO | Status |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: |
+| `chuangmi.camera.ipc019e` | **Xiaomi Smart Camera 2K / Imilab A1 (CMSXJ19E)** | 2304x1296 (2K) | ✅ | ✅ | ✅ | **Verified Working** |
 
-> **Verification Details:** Confirmed with dual-camera live setup. Instant PTZ response, real-time WebRTC stream (&lt;200ms latency), bidirectional microphone talkback, night vision IR switching, and local sleep/privacy toggle all operating flawlessly.
+> **Verification Details:** Confirmed with dual-camera live setup. Instant PTZ response, real-time WebRTC stream (&lt;200ms latency), instant video recording, night vision IR switching, and local sleep/privacy toggle all operating flawlessly.
 
 ---
 
@@ -91,8 +101,6 @@ These models share the identical Chuangmi/Imilab firmware base, MISS streaming p
 ---
 
 ### 3. Potentially Compatible Models (Community Testing Requested)
-
-These cameras use Xiaomi ecosystem firmware with potential MISS/RTSP streaming support:
 
 | Model Identifier | Commercial Name | Resolution | Form Factor | Notes |
 | :--- | :--- | :---: | :---: | :--- |
@@ -121,20 +129,6 @@ Click the badge above to open **Chuangmi Liberator WebRTC** directly inside your
 5. Find **Chuangmi Liberator WebRTC** in the list and click **Download**.
 6. Restart Home Assistant (*Settings > System > Restart*).
 
-### 📁 Manual Installation (Without HACS)
-1. Download the latest release `chuangmi_liberator.zip` from [Releases](https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/releases).
-2. Extract the `chuangmi_liberator` directory into your Home Assistant `/config/custom_components/` directory:
-   ```
-   config/
-   └── custom_components/
-       └── chuangmi_liberator/
-           ├── __init__.py
-           ├── manifest.json
-           ├── camera.py
-           └── ...
-   ```
-3. Restart Home Assistant.
-
 ---
 
 ## ⚙️ Configuration & 1-Click Setup
@@ -144,13 +138,10 @@ Click the badge above to open **Chuangmi Liberator WebRTC** directly inside your
 ### ⚡ 1-Click Integration Add
 Click the badge above to launch the configuration flow directly inside your Home Assistant instance.
 
-### 🛠️ Manual Configuration Steps:
-1. In Home Assistant, navigate to **Settings** ➔ **Devices & Services** ➔ **Add Integration**.
-2. Search for **Chuangmi Liberator WebRTC**.
-3. Choose your setup mode:
-   - **Local Auto-Detection:** Leave username and password blank and click **Submit**. The integration will automatically discover and configure your cameras from Home Assistant local network cache without cloud authentication.
-   - **Xiaomi Cloud Login:** Enter your Xiaomi Mi Home account credentials and server region (`de` = Europe, `cn` = China, `us` = United States) to automatically extract tokens and discover all cameras in your account.
-   - **Manual Setup:** Provide your Camera Device ID (DID), local IP, 32-character miIO token, and hardware model.
+### 🛠️ Configuration Options:
+- **Local Auto-Detection (Recommended):** Leave username and password blank and click **Submit**. The integration will automatically discover and configure your cameras from Home Assistant local network cache without cloud authentication.
+- **Xiaomi Cloud Login:** Enter your Xiaomi Mi Home account credentials and server region (`de` = Europe, `cn` = China, `us` = United States) to automatically extract tokens and discover all cameras in your account.
+- **Manual Setup:** Provide your Camera Device ID (DID), local IP, 32-character miIO token, and hardware model.
 
 ---
 
@@ -160,13 +151,14 @@ Click the badge above to launch the configuration flow directly inside your Home
 | :--- | :--- | :--- |
 | `camera` | `Live Camera` | WebRTC live video & snapshot provider |
 | `button` | `Move Up / Down / Left / Right` | Direct local PTZ motor directional control |
-| `button` | `Restart Camera` | Soft restart of onboard camera daemons |
-| `switch` | `Flip Image 180°` | Invert image for ceiling mount |
-| `switch` | `Sleep Mode / Power` | Toggle standby privacy mode |
+| `button` | `Restart` | Soft restart of onboard camera daemons |
+| `button` | `Record Clip (30s)` | Trigger instant 30-second on-camera recording |
+| `switch` | `Flip 180°` | Invert image for ceiling mount |
+| `switch` | `Sleep / Privacy Mode` | Toggle standby privacy mode |
 | `switch` | `Status LED` | Enable or disable the blue front LED |
 | `switch` | `Timestamp Watermark` | Toggle on-screen date & time display |
 | `switch` | `WDR Backlight Mode` | Wide dynamic range backlight enhancement |
-| `switch` | `Low Light Full Color` | Color night vision in low ambient light |
+| `switch` | `Low Light Color` | Color night vision in low ambient light |
 | `switch` | `Motion Recording` | Toggle automatic motion-triggered SD recording |
 | `select` | `Night Vision` | Night vision IR mode (Auto / Always On / Off) |
 
@@ -181,11 +173,11 @@ Click the badge above to launch the configuration flow directly inside your Home
 |   |         Chuangmi PTZ Card (chuangmi-ptz-card)       |   |
 |   +-----------------------------------------------------+   |
 +-----------------▲-------------------------▲-----------------+
-                  │ WebRTC Video            │ UDP miIO (PTZ)
-                  │ WebRTC Mic Audio        │
+                  │ WebRTC Video (2K / HD)  │ UDP miIO (PTZ)
+                  │ In-Browser Recording    │
 +-----------------▼-------------------------▼-----------------+
 |               go2rtc                | Chuangmi Liberator    |
-|   (Native Xiaomi Miss / Legacy)     | Integration Engine    |
+|   (Native Xiaomi Miss / WebRTC)     | Integration Engine    |
 +-----------------▲-------------------------------------------+
                   │ Xiaomi stream protocol
 +-----------------▼-------------------------------------------+
@@ -193,24 +185,21 @@ Click the badge above to launch the configuration flow directly inside your Home
 +-------------------------------------------------------------+
 ```
 
-1. **Video/Audio Path:** WebRTC frames stream peer-to-peer directly between `go2rtc` and your browser/app for &lt;200ms latency. Microphone audio captured in the Lovelace card is sent back through go2rtc's backchannel audio handler into the camera speaker.
+1. **Video Path:** WebRTC frames stream peer-to-peer directly between `go2rtc` and your browser/app for &lt;200ms latency. The card supports instantaneous quality toggling (2K / HD / SD).
 2. **Control Path:** PTZ moves and switch commands are transmitted directly via UDP packets using miIO AES-CBC encryption without internet roundtrips.
 
 ---
 
-## ❓ FAQ & Troubleshooting
+## ☕ Support & Donations
 
-### Why is the camera stream faster with WebRTC than HLS?
-Traditional HLS chunks video into 2-6 second segments, creating mandatory delay. WebRTC establishes real-time peer-to-peer UDP media exchange, delivering live frames instantaneously.
+If you appreciate this free, open-source integration and want to support its ongoing development, feel free to buy me a coffee:
 
-### What if my camera motor doesn't respond to rapid clicks?
-The integration includes hardware gear serialization locks (`0.08s` cooldown) to prevent packet collisions and preserve the camera's physical stepper motors.
-
-### Where can I find my camera token if I don't use cloud login?
-You can use the open-source community tool [Xiaomi Cloud Tokens Extractor](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor) to extract tokens for all devices on your account in under a minute.
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/VictorCV)
+[![PayPal](https://img.shields.io/badge/PayPal-Donate-blue?style=for-the-badge&logo=paypal)](https://paypal.me/victorcava)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Donate-red?style=for-the-badge&logo=ko-fi)](https://ko-fi.com/victorcv)
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - 100% open-source and free for the community. See [LICENSE](LICENSE) for details.

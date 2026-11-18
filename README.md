@@ -68,6 +68,12 @@ Click the badge above to open **Xiaomi & Imilab Camera Liberator (WebRTC & PTZ)*
 
 The integration bundles a dedicated custom card that registers automatically in Home Assistant:
 
+<p align="center">
+  <img src="images/screenshot_card_full.jpg" width="46%" alt="Lovelace PTZ Card - 2K WebRTC Live & PTZ Controls">
+  &nbsp;&nbsp;
+  <img src="images/screenshot_card_collapsed.jpg" width="46%" alt="Lovelace PTZ Card - Minimal Edge-to-Edge Stream">
+</p>
+
 ```yaml
 type: custom:chuangmi-ptz-card
 camera_entity: camera.camera_entrada_camera_123456789
@@ -82,9 +88,46 @@ title: Front Entrance (2K PTZ)
 | **PTZ D-Pad** | Motor commands with hardware debouncing to prevent packet collisions |
 | **Instant Video Record** | Record live video clips with real-time timer directly from your dashboard |
 | **Flip 180°** | Toggle image orientation for ceiling or upside-down mounts |
-| **Night Vision** | Cycle through Auto, Always On, and Off |
+| **Night Vision** | Cycle through Auto, Night Vision, and Off |
 | **Privacy Mode** | Instant local sleep / standby mode |
 | **Header More-Info** | Tap the title to open native device settings and controls |
+
+---
+
+## 🖼️ Screenshots & Real-World UI
+
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <strong>Multi-Device Fleet & Entities (v1.1.0)</strong><br>
+      <img src="images/screenshot_integration_overview.png" alt="Integration Overview v1.1.0">
+    </td>
+    <td align="center" width="50%">
+      <strong>15+ Onboard Hardware Controls & Diagnostics</strong><br>
+      <img src="images/screenshot_device_controls.jpg" alt="Device Controls and Diagnostics">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Automatic Local Fleet Discovery</strong><br>
+      <img src="images/screenshot_discovery_selection.jpg" alt="Automatic Camera Discovery">
+    </td>
+    <td align="center" width="50%">
+      <strong>Port Isolation & go2rtc Coexistence</strong><br>
+      <img src="images/screenshot_options_coexistence.png" alt="Port Coexistence Options">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Brand Search in Home Assistant</strong><br>
+      <img src="images/screenshot_brand_search.png" alt="Brand Search">
+    </td>
+    <td align="center" width="50%">
+      <strong>Lovelace Card Picker in Dashboard</strong><br>
+      <img src="images/screenshot_card_picker.jpg" alt="Dashboard Card Picker">
+    </td>
+  </tr>
+</table>
 
 ---
 

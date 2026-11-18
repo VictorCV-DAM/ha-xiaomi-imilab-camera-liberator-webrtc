@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.9)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.7.0)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -16,8 +16,8 @@ window.customCards = window.customCards || [];
 if (!window.customCards.some(c => c.type === 'chuangmi-ptz-card')) {
   window.customCards.push({
     type: 'chuangmi-ptz-card',
-    name: 'Cámara Chuangmi PTZ',
-    description: 'Streaming WebRTC 2K en directo con controles PTZ de movimiento, grabación instantánea y controles locales para cámaras Chuangmi, Imilab y Xiaomi.',
+    name: 'Chuangmi PTZ Camera (Cámara PTZ)',
+    description: 'Live 2K WebRTC streaming with PTZ controls, instant recording, and local toggles for Chuangmi / Imilab cameras.',
     preview: true,
     documentationURL: 'https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc'
   });
@@ -50,8 +50,8 @@ const CARD_I18N = {
     card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, grabación instantánea y controles locales para cámaras Chuangmi / Imilab.',
     badge_2k: '2K WEBRTC',
     badge_hd: 'HD 1080P',
-    badge_sd: 'SD FLUIDO',
-    quality_tooltip: 'Hacer clic para alternar resolución (HD 1080p / 2K Máxima / SD Fluido)',
+    badge_sd: 'SD 360P',
+    quality_tooltip: 'Hacer clic para alternar resolución (HD 1080p / 2K Máxima / SD 360p)',
     connecting: 'Conectando con la cámara...',
     buffering: 'Reanudando emisión...',
     stream_error: 'Emisión no disponible o reconectando...',
@@ -60,59 +60,71 @@ const CARD_I18N = {
     more_info_tooltip: 'Ver información y detalles del dispositivo'
   },
   en: {
-    record: 'GRABAR',
-    recording: 'GRABANDO',
-    record_tooltip: 'Hacer clic para grabar vídeo en directo / Detener grabación',
-    record_saved: '¡Grabación guardada!',
-    flip: 'Invertir',
-    flip_tooltip: 'Invertir imagen 180°',
-    night: 'Modo Noche',
-    night_tooltip: 'Modo Noche / Visión Nocturna',
-    privacy: 'Privacidad',
-    privacy_tooltip: 'Modo Privacidad (Reposo / Apagado)',
-    up: 'Mover Arriba',
-    down: 'Mover Abajo',
-    left: 'Mover Izquierda',
-    right: 'Mover Derecha',
-    editor_title: 'Título de la tarjeta:',
-    editor_title_placeholder: 'Cámara Entrada (2K PTZ)',
-    editor_select_camera: 'Seleccionar Cámara Chuangmi / Xiaomi:',
-    editor_helper: '✨ Detección automática: la cruceta PTZ, el botón de grabación y las acciones inferiores se vinculan automáticamente sin escribir IDs ni parámetros manuales.',
-    card_name: 'Tarjeta Cámara Chuangmi PTZ',
-    card_desc: 'Streaming WebRTC 2K en directo con controles PTZ, grabación instantánea y controles locales para cámaras Chuangmi / Imilab.',
+    record: 'RECORD',
+    recording: 'RECORDING',
+    record_tooltip: 'Click to record live clip / Stop recording',
+    record_saved: 'Recording saved!',
+    flip: 'Flip',
+    flip_tooltip: 'Flip image 180°',
+    night: 'Night Mode',
+    night_tooltip: 'Night Mode / Infrared IR',
+    privacy: 'Privacy',
+    privacy_tooltip: 'Privacy Mode (Sleep / Standby)',
+    up: 'Move Up',
+    down: 'Move Down',
+    left: 'Move Left',
+    right: 'Move Right',
+    editor_title: 'Card title:',
+    editor_title_placeholder: 'Entrance Camera (2K PTZ)',
+    editor_select_camera: 'Select Chuangmi / Xiaomi Camera:',
+    editor_helper: '✨ Automatic detection: PTZ D-pad, record button, and bottom action buttons bind automatically.',
+    card_name: 'Chuangmi PTZ Camera Card',
+    card_desc: 'Live 2K WebRTC streaming with PTZ controls, instant recording, and local toggles for Chuangmi / Imilab cameras.',
     badge_2k: '2K WEBRTC',
     badge_hd: 'HD 1080P',
-    badge_sd: 'SD FLUIDO',
-    quality_tooltip: 'Hacer clic para alternar resolución (HD 1080p / 2K Máxima / SD Fluido)',
-    connecting: 'Conectando con la cámara...',
-    buffering: 'Reanudando emisión...',
-    stream_error: 'Emisión no disponible o reconectando...',
-    retry: 'Reintentar conexión',
-    default_title: 'Cámara Chuangmi PTZ',
-    more_info_tooltip: 'Ver información y detalles del dispositivo'
+    badge_sd: 'SD 360P',
+    quality_tooltip: 'Click to switch resolution (HD 1080p / 2K Ultra / SD 360p)',
+    connecting: 'Connecting to camera...',
+    buffering: 'Resuming stream...',
+    stream_error: 'Stream unavailable or reconnecting...',
+    retry: 'Retry connection',
+    default_title: 'Chuangmi PTZ Camera',
+    more_info_tooltip: 'View device info and settings'
   }
 };
 
 function getCardI18n(hass) {
-  // Always return Spanish for a unified, fully localized user experience
-  return CARD_I18N.es;
+  let lang = '';
+  if (hass) {
+    lang = hass.locale?.language || hass.language || hass.selectedLanguage || '';
+  }
+  if (!lang && typeof document !== 'undefined') {
+    try {
+      const ha = document.querySelector('home-assistant');
+      if (ha && ha.hass) {
+        lang = ha.hass.locale?.language || ha.hass.language || ha.hass.selectedLanguage || '';
+      }
+    } catch (_) {}
+  }
+  if (!lang && typeof navigator !== 'undefined' && navigator.language) {
+    lang = navigator.language;
+  }
+  lang = (lang || 'en').toLowerCase();
+  if (lang.startsWith('es')) {
+    return CARD_I18N.es;
+  }
+  return CARD_I18N.en;
 }
 
 function cleanCameraDisplayName(name, did = '') {
-  if (!name) return 'Cámara';
+  if (!name) return 'Camera';
   let cleaned = name.replace(/\s+(Live Camera|Cámara en directo|Camera Control|Control de cámara)$/i, '').trim();
   if (cleaned.startsWith('camera.')) {
     cleaned = cleaned.replace(/^camera\./, '');
   }
-  if (cleaned.toLowerCase() === 'camera entrada' || cleaned.toLowerCase() === 'camera_entrada' || cleaned.toLowerCase() === 'entrada') {
-    cleaned = 'Cámara Entrada';
-  } else if (cleaned.toLowerCase() === 'camara portable' || cleaned.toLowerCase() === 'camara_portable' || cleaned.toLowerCase() === 'portable') {
-    cleaned = 'Cámara portable';
-  } else {
-    cleaned = cleaned.replace(/_/g, ' ');
-    if (cleaned.length > 0) {
-      cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-    }
+  cleaned = cleaned.replace(/_/g, ' ');
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   }
   return did ? `${cleaned} (${did})` : cleaned;
 }
@@ -203,12 +215,16 @@ class ChuangmiPTZCard extends HTMLElement {
 
     if (this._hass) {
       this._updateEntities();
+      this._hasRenderedWithHass = true;
+      this._render();
     }
-    this._render();
   }
 
   set hass(hass) {
+    const prevLang = this._currentLang;
     this._hass = hass;
+    this._currentLang = (hass?.locale?.language || hass?.language || 'en').toLowerCase().slice(0, 2);
+
     if (!this._qualityLoaded) {
       try {
         const savedQuality = localStorage.getItem(this._getStorageKey());
@@ -218,7 +234,8 @@ class ChuangmiPTZCard extends HTMLElement {
     }
     this._updateEntities();
 
-    if (!this._rendered) {
+    if (!this._rendered || !this._hasRenderedWithHass || (prevLang && prevLang !== this._currentLang)) {
+      this._hasRenderedWithHass = true;
       this._render();
     } else {
       this._updateStates();
@@ -1190,16 +1207,16 @@ class ChuangmiPTZCardEditor extends HTMLElement {
 
   setConfig(config) {
     this._config = { ...config };
-    if (!this._rendered) {
+    if (this._hass) {
       this._render();
-    } else {
-      this._syncValues();
     }
   }
 
   set hass(hass) {
+    const prevLang = this._currentLang;
     this._hass = hass;
-    if (!this._rendered) {
+    this._currentLang = (hass?.locale?.language || hass?.language || 'en').toLowerCase().slice(0, 2);
+    if (!this._rendered || (prevLang && prevLang !== this._currentLang)) {
       this._render();
     } else {
       this._syncOptions();

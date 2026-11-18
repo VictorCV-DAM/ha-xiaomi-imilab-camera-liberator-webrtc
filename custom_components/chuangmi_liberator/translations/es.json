@@ -27,7 +27,7 @@
       },
       "manual": {
         "title": "Configuración Manual e Instrucciones",
-        "description": "### 🔓 Instrucciones de Configuración y Liberación\n\nConfigura tu cámara Chuangmi / Xiaomi para obtener streaming **WebRTC en directo sin cortes** y control local por UDP.\n\n*(✨ Si tu cámara ya estaba vinculada en Home Assistant o Xiaomi Miot, los datos detectados se han rellenado automáticamente a continuación).* \n\n---\n#### 📖 Guía de Parámetros y Enlaces:\n- **Device ID (DID):** Identificador numérico único de tu cámara en Xiaomi Cloud (número de 9 o 10 dígitos).\n- **IP Local:** La dirección IP asignada a la cámara en tu red local (LAN) por el router (ej. `192.168.1.50`). Permite streaming WebRTC fluido y controles locales instantáneos sin depender de la nube.\n- **Token miIO (32 hex):** Clave de cifrado de 32 caracteres necesaria para el control directo por UDP local (modo noche, luz led de estado, modo privacidad/apagado).\n  - 🔗 **¿Cómo obtener el Token y DID?** Si no los tienes, puedes extraerlos en 1 minuto usando la herramienta comunitaria: [Xiaomi Cloud Tokens Extractor (GitHub)](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor).\n- **Modelo:** Código de hardware de tu cámara (por ejemplo `chuangmi.camera.ipc019e`).",
+        "description": "### Instrucciones de Configuración y Liberación\n\nConfigura tu cámara Chuangmi / Xiaomi para obtener streaming **WebRTC en directo sin cortes** y control local por UDP.\n\n*(Si tu cámara ya estaba vinculada en Home Assistant o Xiaomi Miot, los datos detectados se han rellenado automáticamente a continuación).* \n\n---\n#### Guía de Parámetros y Enlaces:\n- **Device ID (DID):** Identificador numérico único de tu cámara en Xiaomi Cloud (número de 9 o 10 dígitos).\n- **IP Local:** La dirección IP asignada a la cámara en tu red local (LAN) por el router (ej. `192.168.1.50`). Permite streaming WebRTC fluido y controles locales instantáneos sin depender de la nube.\n- **Token miIO (32 hex):** Clave de cifrado de 32 caracteres necesaria para el control directo por UDP local (modo noche, luz led de estado, modo privacidad/apagado).\n- **Modelo:** Código de hardware de tu cámara (por ejemplo `chuangmi.camera.ipc019e`).",
         "data": {
           "camera_did": "Device ID (DID)",
           "camera_ip": "IP Local",
@@ -82,7 +82,7 @@
   "entity": {
     "switch": {
       "power": {
-        "name": "Modo Reposo / Energía"
+        "name": "Modo Reposo / Privacidad"
       },
       "light": {
         "name": "Luz LED de Estado"

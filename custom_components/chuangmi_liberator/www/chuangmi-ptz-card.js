@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.7)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.6.8)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -91,8 +91,8 @@ const CARD_I18N = {
 };
 
 function getCardI18n(hass) {
-  const lang = (hass?.locale?.language || hass?.language || navigator.language || 'en').toLowerCase();
-  return lang.startsWith('es') ? CARD_I18N.es : CARD_I18N.en;
+  // Always return Spanish for a unified, fully localized user experience
+  return CARD_I18N.es;
 }
 
 function cleanCameraDisplayName(name, did = '') {
@@ -161,8 +161,28 @@ class ChuangmiPTZCard extends HTMLElement {
     this._recordSeconds = 0;
     this._rendered = false;
     this._discoveredEntities = {};
-    this._quality = '2k'; // '2k' | 'hd' | 'sd'
+    this._quality = 'sd'; // Default is 'sd' (fastest and lightest loading)
+    this._qualityLoaded = false;
     this._statusTimer = null;
+  }
+
+  _getCamDid() {
+    const camEntity = this._config?.camera_entity || '';
+    if (this._hass && this._hass.states[camEntity]) {
+      const attrs = this._hass.states[camEntity].attributes || {};
+      if (attrs.did) return String(attrs.did);
+    }
+    const match = camEntity.match(/\d{8,10}/);
+    if (match) return match[0];
+    const lower = camEntity.toLowerCase();
+    if (lower.includes('369136473') || lower.includes('entrada')) return '369136473';
+    if (lower.includes('369135587') || lower.includes('portable')) return '369135587';
+    return '';
+  }
+
+  _getStorageKey() {
+    const did = this._getCamDid() || (this._config?.camera_entity || 'default');
+    return `chuangmi_quality_${did}`;
   }
 
   setConfig(config) {
@@ -170,6 +190,14 @@ class ChuangmiPTZCard extends HTMLElement {
       throw new Error('Invalid configuration');
     }
     this._config = { ...config };
+    try {
+      const savedQuality = localStorage.getItem(this._getStorageKey());
+      this._quality = this._config.quality || savedQuality || 'sd';
+    } catch (_) {
+      this._quality = this._config.quality || 'sd';
+    }
+    this._qualityLoaded = true;
+
     if (this._hass) {
       this._updateEntities();
     }
@@ -178,6 +206,13 @@ class ChuangmiPTZCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (!this._qualityLoaded) {
+      try {
+        const savedQuality = localStorage.getItem(this._getStorageKey());
+        if (savedQuality) this._quality = savedQuality;
+      } catch (_) {}
+      this._qualityLoaded = true;
+    }
     this._updateEntities();
 
     if (!this._rendered) {
@@ -223,32 +258,22 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _resolveStreamName(camEntity) {
-    if (this._config && this._config.stream_name) {
-      return this._config.stream_name;
-    }
     if (!camEntity) return '';
 
-    if (this._hass && this._hass.states[camEntity]) {
-      const attrs = this._hass.states[camEntity].attributes || {};
-      if (attrs.stream_name) return attrs.stream_name;
-      if (attrs.did) return `chuangmi_${attrs.did}`;
+    let baseStream = '';
+    const did = this._getCamDid();
+    if (did) {
+      baseStream = `chuangmi_${did}`;
+    } else if (this._config?.stream_name) {
+      baseStream = this._config.stream_name.replace(/_sd$/, '');
+    } else {
+      baseStream = camEntity.replace(/^camera\./, '');
     }
 
-    const lower = camEntity.toLowerCase();
-    if (lower.includes('369136473') || lower.includes('entrada')) return 'chuangmi_369136473';
-    if (lower.includes('369135587') || lower.includes('portable')) return 'chuangmi_369135587';
-
-    let res = camEntity;
-    const match = camEntity.match(/\d{8,10}/);
-    if (match) res = `chuangmi_${match[0]}`;
-
-    if (this._quality === 'sd' && res && !res.endsWith('_sd')) {
-      return `${res}_sd`;
+    if (this._quality === 'sd') {
+      return baseStream.endsWith('_sd') ? baseStream : `${baseStream}_sd`;
     }
-    if (this._quality !== 'sd' && res && res.endsWith('_sd')) {
-      return res.replace(/_sd$/, '');
-    }
-    return res;
+    return baseStream.replace(/_sd$/, '');
   }
 
   _updateEntities() {
@@ -485,8 +510,12 @@ class ChuangmiPTZCard extends HTMLElement {
   }
 
   _cycleQuality() {
-    const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
-    this._quality = cycle[this._quality] || '2k';
+    // Sequence: sd -> hd -> 2k -> sd
+    const cycle = { 'sd': 'hd', 'hd': '2k', '2k': 'sd' };
+    this._quality = cycle[this._quality] || 'sd';
+    try {
+      localStorage.setItem(this._getStorageKey(), this._quality);
+    } catch (_) {}
     this._updateQualityBadge();
     this._ensureWebRTC(true);
   }
@@ -502,7 +531,7 @@ class ChuangmiPTZCard extends HTMLElement {
 
     if (this._quality === '2k') label.textContent = i18n.badge_2k;
     else if (this._quality === 'hd') label.textContent = i18n.badge_hd;
-    else if (this._quality === 'sd') label.textContent = i18n.badge_sd;
+    else label.textContent = i18n.badge_sd;
   }
 
   _showOverlay(text, showSpinner = true, showRetry = false) {
@@ -937,9 +966,9 @@ class ChuangmiPTZCard extends HTMLElement {
             <span id="cardTitle">${title}</span>
           </div>
           <!-- Interactive Resolution & Quality Modulation Badge -->
-          <button class="badge-quality q-2k" id="badgeQuality" title="${i18n.quality_tooltip}">
+          <button class="badge-quality q-${this._quality}" id="badgeQuality" title="${i18n.quality_tooltip}">
             <span class="badge-dot"></span>
-            <span id="badgeLabel">${i18n.badge_2k}</span>
+            <span id="badgeLabel">${this._quality === '2k' ? i18n.badge_2k : (this._quality === 'hd' ? i18n.badge_hd : i18n.badge_sd)}</span>
             <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="opacity: 0.8;"><path d="M7,10L12,15L17,10H7Z"/></svg>
           </button>
         </div>
@@ -1222,162 +1251,6 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     select.value = currentVal;
   }
 
-  _cycleQuality() {
-    const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
-    this._quality = cycle[this._quality] || '2k';
-    this._updateQualityBadge();
-    this._ensureWebRTC(true);
-  }
-
-  _updateQualityBadge() {
-    const btn = this.shadowRoot.getElementById('badgeQuality');
-    const label = this.shadowRoot.getElementById('badgeLabel');
-    const i18n = getCardI18n(this._hass);
-    if (!btn || !label) return;
-
-    btn.classList.remove('q-2k', 'q-hd', 'q-sd');
-    btn.classList.add(`q-${this._quality}`);
-
-    if (this._quality === '2k') label.textContent = i18n.badge_2k;
-    else if (this._quality === 'hd') label.textContent = i18n.badge_hd;
-    else if (this._quality === 'sd') label.textContent = i18n.badge_sd;
-  }
-
-  _showOverlay(text, showSpinner = true, showRetry = false) {
-    const overlay = this.shadowRoot.getElementById('videoOverlay');
-    const textEl = this.shadowRoot.getElementById('videoStatusText');
-    const spinner = this.shadowRoot.getElementById('videoSpinner');
-    const retryBtn = this.shadowRoot.getElementById('videoRetryBtn');
-    if (!overlay) return;
-
-    if (text && textEl) textEl.textContent = text;
-    if (spinner) spinner.style.display = showSpinner ? 'block' : 'none';
-    if (retryBtn) retryBtn.style.display = showRetry ? 'block' : 'none';
-    overlay.classList.remove('hidden');
-  }
-
-  _hideOverlay() {
-    const overlay = this.shadowRoot.getElementById('videoOverlay');
-    if (overlay) overlay.classList.add('hidden');
-    if (this._statusTimer) {
-      clearTimeout(this._statusTimer);
-      this._statusTimer = null;
-    }
-  }
-
-  _monitorVideoElement(webrtc) {
-    const i18n = getCardI18n(this._hass);
-    const attachHandlers = (video) => {
-      if (!video || video._hasStatusHandlers) return;
-      video._hasStatusHandlers = true;
-
-      const onFrameReady = () => this._hideOverlay();
-      video.addEventListener('playing', onFrameReady);
-      video.addEventListener('loadeddata', onFrameReady);
-      video.addEventListener('timeupdate', () => {
-        if (video.currentTime > 0) onFrameReady();
-      });
-
-      video.addEventListener('waiting', () => {
-        this._showOverlay(i18n.buffering, true, false);
-      });
-
-      video.addEventListener('stalled', () => {
-        this._showOverlay(i18n.buffering, true, false);
-      });
-
-      video.addEventListener('error', () => {
-        this._showOverlay(i18n.stream_error, false, true);
-      });
-    };
-
-    // Find video immediately or watch for attachment
-    let video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
-    if (video) {
-      attachHandlers(video);
-    } else {
-      const interval = setInterval(() => {
-        video = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
-        if (video) {
-          attachHandlers(video);
-          clearInterval(interval);
-        }
-      }, 200);
-      setTimeout(() => clearInterval(interval), 6000);
-    }
-  }
-
-  _ensureWebRTC(forceReload = false) {
-    const container = this.shadowRoot.getElementById('videoContainer');
-    if (!container) return;
-
-    const streamName = this._resolveStreamName(this._config?.camera_entity);
-    const i18n = getCardI18n(this._hass);
-
-    if (!streamName) {
-      const isEs = (this._hass?.language || 'en').startsWith('es');
-      this._showOverlay(isEs ? 'Seleccione una cámara en el editor' : 'Select a camera in card editor', false, false);
-      return;
-    }
-
-    if (!customElements.get('webrtc-camera')) {
-      this._showOverlay(i18n.connecting, true, false);
-      customElements.whenDefined('webrtc-camera').then(() => {
-        this._ensureWebRTC(forceReload);
-      });
-      return;
-    }
-
-    let webrtc = container.querySelector('webrtc-camera');
-    if (!webrtc || forceReload) {
-      if (webrtc) {
-        try { webrtc.remove(); } catch (_) {}
-      }
-      this._showOverlay(i18n.connecting, true, false);
-
-      webrtc = document.createElement('webrtc-camera');
-      webrtc.setConfig({
-        url: streamName,
-        muted: true
-      });
-      if (this._hass) {
-        webrtc.hass = this._hass;
-      }
-      // Insert before overlay so overlay remains on top
-      const overlay = this.shadowRoot.getElementById('videoOverlay');
-      if (overlay) {
-        container.insertBefore(webrtc, overlay);
-      } else {
-        container.appendChild(webrtc);
-      }
-
-      this._monitorVideoElement(webrtc);
-    } else {
-      if (this._hass && webrtc.hass !== this._hass) {
-        webrtc.hass = this._hass;
-      }
-      this._monitorVideoElement(webrtc);
-    }
-
-    // Force connect if it was idle
-    if (this._hass && webrtc && !webrtc.ws && !webrtc.pc) {
-      try {
-        if (typeof webrtc.onconnect === 'function') {
-          webrtc.onconnect();
-        }
-      } catch (e) {}
-    }
-
-    // Safety timeout: if after 10s video is still not playing, show retry button
-    if (this._statusTimer) clearTimeout(this._statusTimer);
-    this._statusTimer = setTimeout(() => {
-      const v = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
-      if (!v || v.paused || v.currentTime === 0) {
-        this._showOverlay(i18n.stream_error, false, true);
-      }
-    }, 10000);
-  }
-
   _render() {
     if (!this._hass) return;
 
@@ -1468,7 +1341,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.6.7 RECORD-MUTE-ILLUMINATION & DIRECT-WEBRTC ',
+  '%c CHUANGMI-PTZ-CARD %c v1.6.8 RECORD-MUTE-ILLUMINATION & PERSISTENT-SD ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

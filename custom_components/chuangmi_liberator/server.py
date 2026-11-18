@@ -102,15 +102,13 @@ def generate_chuangmi_config(
         model = c.get("camera_model") or "chuangmi.camera.ipc019e"
         if did and ip:
             stream_name = f"chuangmi_{did}"
-            # 2K / HD primary stream
+            # 2K / HD stream (subtype=hd)
             streams[stream_name] = [
-                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=hd",
-                f"ffmpeg:rtsp://127.0.0.1:{rtsp_port}/{stream_name}#video=h264#audio=opus"
+                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=hd"
             ]
-            # SD smooth sub-stream
+            # SD smooth sub-stream (subtype=sd)
             streams[f"{stream_name}_sd"] = [
-                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=sd",
-                f"ffmpeg:rtsp://127.0.0.1:{rtsp_port}/{stream_name}_sd#video=h264#audio=opus"
+                f"xiaomi://{user_id}:{country}@{ip}?did={did}&model={model}&subtype=sd"
             ]
 
     cfg = {
@@ -199,10 +197,16 @@ async def async_bridge_to_primary_go2rtc(
         for suffix in ["", "_sd"]:
             stream_name = f"chuangmi_{did}{suffix}"
             source_url = f"rtsp://127.0.0.1:{rtsp_port}/{stream_name}"
-            params = [("name", stream_name), ("src", source_url)]
+            payload = {
+                "name": stream_name,
+                "src": [
+                    source_url,
+                    f"ffmpeg:{source_url}#video=h264#audio=opus"
+                ]
+            }
             try:
-                async with session.put(f"{primary_url}/api/streams", params=params, timeout=2) as resp:
+                async with session.put(f"{primary_url}/api/streams", json=payload, timeout=2) as resp:
                     if resp.status in (200, 201):
-                        _LOGGER.debug("Bridged %s to primary go2rtc (%s)", stream_name, primary_url)
+                        _LOGGER.debug("Bridged %s to primary go2rtc (%s) with H264 fallback", stream_name, primary_url)
             except Exception:
                 pass

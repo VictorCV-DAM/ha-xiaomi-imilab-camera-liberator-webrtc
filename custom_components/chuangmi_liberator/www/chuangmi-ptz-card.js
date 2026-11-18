@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.7.0)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.7.6)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -230,11 +230,14 @@ class ChuangmiPTZCard extends HTMLElement {
 
   _loadPreferences() {
     // 1. Resolution / Quality
+    const is2k = this._is2KModel();
+    const defaultQ = is2k ? '2k' : 'hd';
     try {
-      const savedQuality = localStorage.getItem(this._getStorageKey());
-      this._quality = this._config.quality || savedQuality || 'hd';
+      let savedQuality = localStorage.getItem(this._getStorageKey());
+      if (savedQuality === '2k' && !is2k) savedQuality = 'hd';
+      this._quality = this._config.quality || savedQuality || defaultQ;
     } catch (_) {
-      this._quality = this._config.quality || 'hd';
+      this._quality = this._config.quality || defaultQ;
     }
 
     // 2. Controls collapsed / expanded
@@ -651,17 +654,20 @@ class ChuangmiPTZCard extends HTMLElement {
   _is2KModel() {
     const camState = this._hass && this._config?.camera_entity ? this._hass.states[this._config.camera_entity] : null;
     const model = (camState?.attributes?.model || '').toLowerCase();
-    return model.includes('ipc019') || model.includes('026c02') || model.includes('046c04') || model.includes('069a01') || model.includes('ipc020') || model.includes('ipc021') || model.includes('ipc022') || model.includes('2k') || model.includes('3k');
+    return model.includes('026c02') || model.includes('046c04') || model.includes('069a01') || model.includes('ipc021') || model.includes('ipc022') || model.includes('2k') || model.includes('3k') || model.includes('c300') || model.includes('c400') || model.includes('c500');
   }
 
   _cycleQuality() {
     if (this._isQualitySwitching) return;
     this._isQualitySwitching = true;
 
-    // Toggle between Max Native (2K / HD) and Smooth Substream (SD 360P)
-    const isSd = (this._quality === 'sd');
     const is2k = this._is2KModel();
-    this._quality = isSd ? (is2k ? '2k' : 'hd') : 'sd';
+    if (is2k) {
+      const cycle = { '2k': 'hd', 'hd': 'sd', 'sd': '2k' };
+      this._quality = cycle[this._quality] || '2k';
+    } else {
+      this._quality = (this._quality === 'hd') ? 'sd' : 'hd';
+    }
 
     try {
       localStorage.setItem(this._getStorageKey(), this._quality);
@@ -863,7 +869,8 @@ class ChuangmiPTZCard extends HTMLElement {
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
-        muted: true
+        muted: true,
+        mode: 'webrtc,mse'
       });
       if (this._hass) {
         webrtc.hass = this._hass;

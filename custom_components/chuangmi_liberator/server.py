@@ -200,7 +200,7 @@ async def async_bridge_to_primary_go2rtc(
                 "name": stream_name,
                 "src": [
                     source_url,
-                    f"ffmpeg:{source_url}#video=h264#audio=opus"
+                    f"ffmpeg:{stream_name}#audio=opus"
                 ]
             }
             try:

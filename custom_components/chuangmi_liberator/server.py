@@ -198,8 +198,7 @@ async def async_bridge_to_primary_go2rtc(
         payload_base = {
             "name": base_stream,
             "src": [
-                source_url,
-                f"ffmpeg:{base_stream}#audio=opus"
+                source_url
             ]
         }
         payload_sd = {

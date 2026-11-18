@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.0)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.5)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -661,8 +661,8 @@ class ChuangmiPTZCard extends HTMLElement {
     } catch (_) {}
     this._updateQualityBadge();
 
-    const streamName = this._resolveStreamName(this._config?.camera_entity);
-    this._switchStream(streamName);
+    // Instant seamless switch: profile updated without tearing down the live playback
+    this._isQualitySwitching = false;
   }
 
   _switchStream(streamName) {
@@ -748,12 +748,25 @@ class ChuangmiPTZCard extends HTMLElement {
 
       const onFrameReady = () => {
         this._hideOverlay();
+        if (this._statusTimer) {
+          clearTimeout(this._statusTimer);
+          this._statusTimer = null;
+        }
       };
 
       video.addEventListener('playing', onFrameReady);
       video.addEventListener('loadeddata', onFrameReady);
       video.addEventListener('timeupdate', () => {
         if (video.currentTime > 0) onFrameReady();
+        // Eliminate latency / lag: keep playback synced to the live edge (<0.3s)
+        try {
+          if (video.buffered && video.buffered.length > 0) {
+            const end = video.buffered.end(video.buffered.length - 1);
+            if (end - video.currentTime > 1.2) {
+              video.currentTime = end - 0.15;
+            }
+          }
+        } catch (_) {}
       });
 
       video.addEventListener('error', () => {
@@ -866,7 +879,7 @@ class ChuangmiPTZCard extends HTMLElement {
       webrtc.setConfig({
         url: streamName,
         muted: true,
-        mode: 'webrtc,mse'
+        mode: 'mse,webrtc'
       });
       if (this._hass) {
         webrtc.hass = this._hass;
@@ -898,14 +911,14 @@ class ChuangmiPTZCard extends HTMLElement {
       } catch (e) {}
     }
 
-    // Safety timeout: if after 10s video is still not playing, show retry button
+    // Safety timeout: if after 25s video is still not playing, show retry button
     if (this._statusTimer) clearTimeout(this._statusTimer);
     this._statusTimer = setTimeout(() => {
       const v = webrtc.shadowRoot?.querySelector('video') || webrtc.querySelector('video');
       if (!v || v.paused || v.currentTime === 0) {
         this._showOverlay(i18n.stream_error, false, true);
       }
-    }, 10000);
+    }, 25000);
   }
 
   _render() {

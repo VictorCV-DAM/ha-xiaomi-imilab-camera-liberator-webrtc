@@ -272,12 +272,13 @@ class ChuangmiLiberatorOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Chuangmi Liberator WebRTC."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+        super().__init__()
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
         """Manage the options."""
         errors = {}
-        opts = dict(self.config_entry.options)
+        opts = dict(self._config_entry.options)
 
         if user_input is not None:
             api_p = user_input.get(CONF_GO2RTC_API_PORT, DEFAULT_API_PORT)

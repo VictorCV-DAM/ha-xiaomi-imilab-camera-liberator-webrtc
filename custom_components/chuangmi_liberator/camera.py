@@ -235,23 +235,11 @@ class ChuangmiLiberatorCamera(Camera):
     async def async_camera_image(
         self, width: Optional[int] = None, height: Optional[int] = None
     ) -> Optional[bytes]:
-        """Fetch frame snapshot from go2rtc snapshot API with cached fallback."""
-        stream_name = f"chuangmi_{self._did}"
-        try:
-            url = f"{self._api_url}/api/frame.jpeg?src={stream_name}&cache=3s"
-            session = async_get_clientsession(self.hass)
-            auth = self._go2rtc_auth
-            async with session.get(url, auth=auth, timeout=3) as resp:
-                if resp.status == 200:
-                    data = await resp.read()
-                    if len(data) > 0:
-                        self._last_image = data
-                        return data
-        except Exception as e:
-            _LOGGER.debug("Snapshot fetch for %s: %s", stream_name, e)
-
+        """Return stable cached snapshot or fallback image to prevent TUTK stream packet drops."""
         if self._last_image:
             return self._last_image
+        if self._fallback_image:
+            return self._fallback_image
         return None
 
     async def stream_source(self) -> Optional[str]:

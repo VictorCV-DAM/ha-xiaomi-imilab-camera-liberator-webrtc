@@ -1,5 +1,5 @@
 /**
- * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.5)
+ * Chuangmi / Imilab PTZ Camera Lovelace Card for Home Assistant (v1.8.6)
  * Features:
  *  - Ultra-low-latency 2K/HD WebRTC streaming via go2rtc
  *  - Tactile PTZ controller with directional buttons
@@ -392,13 +392,19 @@ class ChuangmiPTZCard extends HTMLElement {
     if (!camEntity) return '';
 
     const did = this._getCamDid();
+    let base = '';
     if (did) {
-      return `chuangmi_${did}`;
+      base = `chuangmi_${did}`;
+    } else if (this._config?.stream_name) {
+      base = this._config.stream_name.replace(/_sd$/, '');
+    } else {
+      base = camEntity.replace(/^camera\./, '');
     }
-    if (this._config?.stream_name) {
-      return this._config.stream_name.replace(/_sd$/, '');
+
+    if (this._quality === 'sd') {
+      return `${base}_sd`;
     }
-    return camEntity.replace(/^camera\./, '');
+    return base;
   }
 
   _updateEntities() {
@@ -661,8 +667,9 @@ class ChuangmiPTZCard extends HTMLElement {
     } catch (_) {}
     this._updateQualityBadge();
 
-    // Instant seamless switch: profile updated without tearing down the live playback
-    this._isQualitySwitching = false;
+    // Actively switch to target quality stream
+    const targetStream = this._resolveStreamName(this._config?.camera_entity);
+    this._switchStream(targetStream);
   }
 
   _switchStream(streamName) {
@@ -701,7 +708,7 @@ class ChuangmiPTZCard extends HTMLElement {
       setTimeout(() => {
         this._isQualitySwitching = false;
       }, 400);
-    }, 150);
+    }, 100);
   }
 
   _updateQualityBadge() {
@@ -878,8 +885,7 @@ class ChuangmiPTZCard extends HTMLElement {
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
-        muted: true,
-        mode: 'mse,webrtc'
+        muted: true
       });
       if (this._hass) {
         webrtc.hass = this._hass;
@@ -933,13 +939,11 @@ class ChuangmiPTZCard extends HTMLElement {
         :host {
           display: block;
           position: relative;
-          z-index: 1;
-          isolation: isolate;
+          z-index: 0;
         }
         ha-card {
           position: relative;
-          z-index: 1;
-          isolation: isolate;
+          z-index: 0;
           overflow: hidden;
           background: #101216;
           border-radius: 18px;

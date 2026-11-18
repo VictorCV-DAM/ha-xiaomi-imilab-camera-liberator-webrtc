@@ -262,6 +262,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             server = ChuangmiServer(binary_path, config_path, api_port=api_port)
             server.start()
             _LOGGER.info("Started dedicated Chuangmi go2rtc instance on port %d", api_port)
+    else:
+        try:
+            async with session.post(f"http://127.0.0.1:{api_port}/api/restart", timeout=2) as resp:
+                _LOGGER.debug("Triggered restart on running Chuangmi go2rtc daemon (%d)", resp.status)
+        except Exception:
+            pass
 
     # Periodic background bridge into primary go2rtc (:1984) when active and enabled
     bridge_task = None

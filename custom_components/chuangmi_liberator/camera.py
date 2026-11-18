@@ -11,6 +11,18 @@ from homeassistant.components.camera import (
     CameraEntityFeature,
     StreamType,
 )
+
+try:
+    from homeassistant.components.camera import (
+        WebRTCAnswer,
+        WebRTCError,
+        WebRTCSendMessage,
+    )
+except ImportError:
+    WebRTCAnswer = None
+    WebRTCError = None
+    WebRTCSendMessage = None
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -121,7 +133,7 @@ async def async_setup_entry(
             token=c.get(CONF_CAMERA_TOKEN, ""),
             model=c.get(CONF_CAMERA_MODEL, "chuangmi.camera.ipc019e"),
             country=entry_data.get(CONF_SERVER_COUNTRY, "de"),
-            unique_id=f"{entry.entry_id}_{did}",
+            unique_id=f"{DOMAIN}_{did}_camera",
             go2rtc_auth=go2rtc_auth,
             user_id=user_id,
             fallback_image=fallback_bytes
@@ -133,7 +145,7 @@ async def async_setup_entry(
 
 class ChuangmiLiberatorCamera(Camera):
     _attr_has_entity_name = True
-    _attr_translation_key = "camera"
+    _attr_translation_key = "live_camera"
 
     def __init__(
         self,
@@ -148,43 +160,40 @@ class ChuangmiLiberatorCamera(Camera):
         unique_id: str,
         go2rtc_auth: Optional[aiohttp.BasicAuth] = None,
         user_id: Optional[str] = None,
-        fallback_image: Optional[bytes] = None,
+        fallback_image: Optional[bytes] = None
     ):
         super().__init__()
         self.hass = hass
         self._client = client
         self._did = did
+        self._name = name
         self._device_name = name
         self._ip = ip
         self._token = token
         self._model = model
-        self._country = country or "de"
+        self._country = country
+        self._attr_unique_id = unique_id
         self._go2rtc_auth = go2rtc_auth
-        self._stored_user_id = user_id or ""
-        self._attr_unique_id = f"{DOMAIN}_{did}_camera"
-        self._attr_supported_features = CameraEntityFeature.STREAM
-        self._attr_is_streaming = True
-        if StreamType:
-            self._attr_frontend_stream_type = StreamType.HLS
-        else:
-            self._attr_frontend_stream_type = "hls"
-            
-        self._current_stream_url: Optional[str] = None
-        self._attr_is_on = True
+        self._stored_user_id = user_id
+        self._fallback_image = fallback_image
         self._last_image: Optional[bytes] = fallback_image
+        self._attr_is_on = True
+        self._attr_supported_features = CameraEntityFeature.STREAM
+
+    @property
+    def unique_id(self) -> str:
+        """Return the unique ID of the camera."""
+        return self._attr_unique_id
+
+    @property
+    def name(self) -> str:
+        """Return the name of the camera entity."""
+        return "Live Camera"
 
     @property
     def use_stream_for_stills(self) -> bool:
-        """Force Home Assistant to use async_camera_image instead of stream worker."""
+        """Use stream snapshot for still frames."""
         return False
-
-    @property
-    def supported_features(self) -> int:
-        return int(CameraEntityFeature.STREAM)
-
-    @property
-    def frontend_stream_type(self):
-        return StreamType.HLS if StreamType else "hls"
 
     @property
     def is_streaming(self) -> bool:
@@ -197,6 +206,11 @@ class ChuangmiLiberatorCamera(Camera):
         if not self._attr_is_on:
             return "off"
         return "streaming"
+
+    @property
+    def frontend_stream_type(self) -> StreamType:
+        """Return WebRTC so Home Assistant UI uses modern zero-latency WebRTC directly."""
+        return StreamType.WEB_RTC
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -227,7 +241,7 @@ class ChuangmiLiberatorCamera(Camera):
             url = f"{GO2RTC_API_URL}/api/frame.jpeg?src={stream_name}&cache=3s"
             session = async_get_clientsession(self.hass)
             auth = self._go2rtc_auth
-            async with session.get(url, auth=auth, timeout=2) as resp:
+            async with session.get(url, auth=auth, timeout=3) as resp:
                 if resp.status == 200:
                     data = await resp.read()
                     if len(data) > 0:
@@ -241,7 +255,7 @@ class ChuangmiLiberatorCamera(Camera):
         return None
 
     async def stream_source(self) -> Optional[str]:
-        """Provide low-latency RTSP stream url registered in go2rtc."""
+        """Provide low-latency stream url registered in go2rtc."""
         stream_name = f"chuangmi_{self._did}"
         user_id = self._stored_user_id or "admin"
         stream_url = f"xiaomi://{user_id}:{self._country}@{self._ip}?did={self._did}&model={self._model}&subtype=sd"
@@ -255,8 +269,13 @@ class ChuangmiLiberatorCamera(Camera):
             rtsp = f"rtsp://127.0.0.1:8554/{stream_name}"
         return rtsp
 
-    async def async_handle_web_rtc_offer(self, offer_sdp: str) -> Optional[str]:
-        """Handle WebRTC negotiation directly through go2rtc core."""
+    async def async_handle_async_webrtc_offer(
+        self,
+        offer_sdp: str,
+        session_id: str,
+        send_message: WebRTCSendMessage,
+    ) -> None:
+        """Handle WebRTC negotiation directly through go2rtc core for Home Assistant 2024.11+."""
         stream_name = f"chuangmi_{self._did}"
         session = async_get_clientsession(self.hass)
         auth = self._go2rtc_auth
@@ -270,7 +289,35 @@ class ChuangmiLiberatorCamera(Camera):
             ) as resp:
                 if resp.status == 200:
                     answer_data = await resp.text()
-                    return answer_data
+                    if WebRTCAnswer is not None:
+                        try:
+                            send_message(WebRTCAnswer(answer=answer_data))
+                        except TypeError:
+                            send_message(WebRTCAnswer(answer_data))
+                    return
+                _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s", resp.status)
+                if WebRTCError is not None:
+                    send_message(WebRTCError("go2rtc_error", f"HTTP {resp.status}"))
+        except Exception as e:
+            _LOGGER.error("Error exchanging WebRTC offer for %s: %s", stream_name, e)
+            if WebRTCError is not None:
+                send_message(WebRTCError("webrtc_failed", str(e)))
+
+    async def async_handle_web_rtc_offer(self, offer_sdp: str) -> Optional[str]:
+        """Backward compatibility for synchronous WebRTC offer handling."""
+        stream_name = f"chuangmi_{self._did}"
+        session = async_get_clientsession(self.hass)
+        auth = self._go2rtc_auth
+        url = f"{GO2RTC_API_URL}/api/webrtc?src={stream_name}"
+        try:
+            async with session.post(
+                url,
+                data={"sdp": offer_sdp},
+                auth=auth,
+                timeout=5
+            ) as resp:
+                if resp.status == 200:
+                    return await resp.text()
                 _LOGGER.error("go2rtc WebRTC offer negotiation returned HTTP %s", resp.status)
         except Exception as e:
             _LOGGER.error("Error exchanging WebRTC offer for %s: %s", stream_name, e)

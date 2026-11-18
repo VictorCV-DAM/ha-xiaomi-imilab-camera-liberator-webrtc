@@ -648,15 +648,94 @@ class ChuangmiPTZCard extends HTMLElement {
     }
   }
 
+  _is2KModel() {
+    const camState = this._hass && this._config?.camera_entity ? this._hass.states[this._config.camera_entity] : null;
+    const model = (camState?.attributes?.model || '').toLowerCase();
+    return model.includes('ipc019') || model.includes('026c02') || model.includes('046c04') || model.includes('069a01') || model.includes('ipc020') || model.includes('ipc021') || model.includes('ipc022') || model.includes('2k') || model.includes('3k');
+  }
+
   _cycleQuality() {
-    // Sequence: hd -> 2k -> sd -> hd
-    const cycle = { 'hd': '2k', '2k': 'sd', 'sd': 'hd' };
-    this._quality = cycle[this._quality] || 'hd';
+    if (this._isQualitySwitching) return;
+    this._isQualitySwitching = true;
+
+    // Toggle between Max Native (2K / HD) and Smooth Substream (SD 360P)
+    const isSd = (this._quality === 'sd');
+    const is2k = this._is2KModel();
+    this._quality = isSd ? (is2k ? '2k' : 'hd') : 'sd';
+
     try {
       localStorage.setItem(this._getStorageKey(), this._quality);
     } catch (_) {}
     this._updateQualityBadge();
-    this._ensureWebRTC(true);
+
+    const streamName = this._resolveStreamName(this._config?.camera_entity);
+    this._switchStream(streamName);
+  }
+
+  _switchStream(streamName) {
+    const container = this.shadowRoot.getElementById('videoContainer');
+    if (!container || !streamName) {
+      this._isQualitySwitching = false;
+      return;
+    }
+
+    const i18n = getCardI18n(this._hass);
+    this._showOverlay(i18n.connecting, true, false);
+
+    const webrtc = container.querySelector('webrtc-camera');
+    if (webrtc) {
+      // 1. Immediately terminate active WebRTC and WebSocket session to release the camera encoder
+      try {
+        if (typeof webrtc.ondisconnect === 'function') {
+          webrtc.ondisconnect();
+        }
+        if (webrtc.disconnectTID) {
+          clearTimeout(webrtc.disconnectTID);
+          webrtc.disconnectTID = 0;
+        }
+        if (webrtc.reconnectTID) {
+          clearTimeout(webrtc.reconnectTID);
+          webrtc.reconnectTID = 0;
+        }
+        if (webrtc.ws) {
+          try { webrtc.ws.close(); } catch (_) {}
+          webrtc.ws = null;
+        }
+        if (webrtc.pc) {
+          try { webrtc.pc.close(); } catch (_) {}
+          webrtc.pc = null;
+        }
+      } catch (err) {
+        console.debug('Disconnect error:', err);
+      }
+
+      // 2. Pause 200ms to allow camera UDP socket to close gracefully, then connect new stream
+      setTimeout(() => {
+        try {
+          if (webrtc.config) {
+            webrtc.config.url = streamName;
+            webrtc.config.mode = 'webrtc';
+            webrtc.config.muted = true;
+          } else {
+            webrtc.setConfig({ url: streamName, muted: true, mode: 'webrtc' });
+          }
+          if (this._hass) webrtc.hass = this._hass;
+          if (typeof webrtc.onconnect === 'function') {
+            webrtc.onconnect();
+          }
+        } catch (e) {
+          this._ensureWebRTC(true);
+        }
+        setTimeout(() => {
+          this._isQualitySwitching = false;
+        }, 400);
+      }, 200);
+    } else {
+      this._ensureWebRTC(true);
+      setTimeout(() => {
+        this._isQualitySwitching = false;
+      }, 400);
+    }
   }
 
   _updateQualityBadge() {
@@ -701,22 +780,35 @@ class ChuangmiPTZCard extends HTMLElement {
       if (!video || video._hasStatusHandlers) return;
       video._hasStatusHandlers = true;
 
-      const onFrameReady = () => this._hideOverlay();
+      let bufferTimer = null;
+      const onFrameReady = () => {
+        if (bufferTimer) {
+          clearTimeout(bufferTimer);
+          bufferTimer = null;
+        }
+        this._hideOverlay();
+      };
+
       video.addEventListener('playing', onFrameReady);
       video.addEventListener('loadeddata', onFrameReady);
       video.addEventListener('timeupdate', () => {
         if (video.currentTime > 0) onFrameReady();
       });
 
-      video.addEventListener('waiting', () => {
-        this._showOverlay(i18n.buffering, true, false);
-      });
+      // Debounce buffering overlay: only show if stalled for > 1500ms
+      const handleBuffering = () => {
+        if (!bufferTimer) {
+          bufferTimer = setTimeout(() => {
+            this._showOverlay(i18n.buffering, true, false);
+          }, 1500);
+        }
+      };
 
-      video.addEventListener('stalled', () => {
-        this._showOverlay(i18n.buffering, true, false);
-      });
+      video.addEventListener('waiting', handleBuffering);
+      video.addEventListener('stalled', handleBuffering);
 
       video.addEventListener('error', () => {
+        if (bufferTimer) clearTimeout(bufferTimer);
         this._showOverlay(i18n.stream_error, false, true);
       });
     };
@@ -732,8 +824,8 @@ class ChuangmiPTZCard extends HTMLElement {
           attachHandlers(video);
           clearInterval(interval);
         }
-      }, 200);
-      setTimeout(() => clearInterval(interval), 6000);
+      }, 150);
+      setTimeout(() => clearInterval(interval), 5000);
     }
   }
 
@@ -806,14 +898,22 @@ class ChuangmiPTZCard extends HTMLElement {
     let webrtc = container.querySelector('webrtc-camera');
     if (!webrtc || forceReload) {
       if (webrtc) {
-        try { webrtc.remove(); } catch (_) {}
+        try {
+          if (typeof webrtc.ondisconnect === 'function') webrtc.ondisconnect();
+          if (webrtc.disconnectTID) clearTimeout(webrtc.disconnectTID);
+          if (webrtc.reconnectTID) clearTimeout(webrtc.reconnectTID);
+          if (webrtc.ws) webrtc.ws.close();
+          if (webrtc.pc) webrtc.pc.close();
+          webrtc.remove();
+        } catch (_) {}
       }
       this._showOverlay(i18n.connecting, true, false);
 
       webrtc = document.createElement('webrtc-camera');
       webrtc.setConfig({
         url: streamName,
-        muted: true
+        muted: true,
+        mode: 'webrtc'
       });
       if (this._hass) {
         webrtc.hass = this._hass;
@@ -1722,7 +1822,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.7.2 EDGE-TO-EDGE VIDEO & 3-STATE NIGHT VISION ',
+  '%c CHUANGMI-PTZ-CARD %c v1.7.3 ULTRA-FAST STREAM STABILITY & ANTI-HANG ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

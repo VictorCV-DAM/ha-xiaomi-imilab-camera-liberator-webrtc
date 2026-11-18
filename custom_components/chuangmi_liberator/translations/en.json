@@ -1,0 +1,111 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Chuangmi Liberator WebRTC",
+        "description": "Enter your Xiaomi Cloud credentials to automatically discover all your cameras, or leave fields blank and click Submit to use **Local Auto-Detection**.",
+        "data": {
+          "username": "Xiaomi Email or User ID (Optional)",
+          "password": "Password (Optional)",
+          "server_country": "Server / Country"
+        },
+        "data_description": {
+          "username": "Your Xiaomi Mi Home account identifier. Leave blank for direct local/token setup.",
+          "password": "Your Xiaomi password. Leave blank to skip cloud login.",
+          "server_country": "Xiaomi cloud server region (de = Europe, cn = China, us = United States)."
+        }
+      },
+      "select_camera": {
+        "title": "Select Cameras",
+        "description": "The following cameras were automatically discovered in your Xiaomi account/network. All discovered cameras are selected by default to be liberated into Home Assistant:",
+        "data": {
+          "cameras": "Cameras to liberate"
+        },
+        "data_description": {
+          "cameras": "Select which cameras to add to Home Assistant."
+        }
+      },
+      "manual": {
+        "title": "Manual Camera Setup & Instructions",
+        "description": "### 🔓 Camera Setup Instructions\n\nConfigure your Chuangmi / Xiaomi camera parameters to enable **low-latency WebRTC live streaming** and local controls without cloud throttling.\n\n*(✨ If your camera is already registered in Home Assistant or Xiaomi Miot, detected parameters have been pre-filled automatically below).* \n\n---\n#### 📖 Parameter Guide & Useful Links:\n- **Device ID (DID):** Unique numeric identifier of your camera in Xiaomi Cloud (9 to 10 digits).\n- **Local IP:** Local network IP address assigned by your router (e.g. `192.168.1.50`). Required for fast stream routing and zero-latency local controls.\n- **Token (32 hex):** 32-character miIO encryption token required for direct local UDP control of privacy mode, blue status LED, and night vision.\n  - 🔗 **How to get your Token and DID?** If you don't have them, extract them easily using the open-source tool: [Xiaomi Cloud Tokens Extractor (GitHub)](https://github.com/PiotrMachowski/Xiaomi-cloud-tokens-extractor).\n- **Model:** Hardware model identifier (e.g. `chuangmi.camera.ipc019e`).",
+        "data": {
+          "camera_did": "Device ID (DID)",
+          "camera_ip": "Local IP",
+          "camera_token": "Token (32 hex)",
+          "camera_model": "Model"
+        },
+        "data_description": {
+          "camera_did": "Numeric identifier of the camera in Xiaomi Cloud (e.g. 123456789).",
+          "camera_ip": "Local IP address on your home network (e.g. 192.168.1.50).",
+          "camera_token": "32-character hexadecimal key for local UDP control.",
+          "camera_model": "Hardware model identifier (e.g. chuangmi.camera.ipc019e)."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid Xiaomi credentials.",
+      "cannot_connect": "Failed to connect to Xiaomi servers.",
+      "required": "This field is required."
+    },
+    "abort": {
+      "already_configured": "This camera is already configured in Chuangmi Liberator."
+    }
+  },
+  "entity": {
+    "camera": {
+      "camera": {
+        "name": "Live Camera"
+      }
+    },
+    "switch": {
+      "power": {
+        "name": "Sleep Mode / Power"
+      },
+      "light": {
+        "name": "Status LED"
+      },
+      "flip": {
+        "name": "Flip Image 180°"
+      },
+      "watermark": {
+        "name": "Timestamp Watermark"
+      },
+      "wdr": {
+        "name": "WDR Backlight Mode"
+      },
+      "full_color": {
+        "name": "Low Light Full Color"
+      },
+      "motion_record": {
+        "name": "Motion Recording"
+      }
+    },
+    "button": {
+      "restart": {
+        "name": "Restart Camera"
+      },
+      "ptz_up": {
+        "name": "Move Up"
+      },
+      "ptz_down": {
+        "name": "Move Down"
+      },
+      "ptz_left": {
+        "name": "Move Left"
+      },
+      "ptz_right": {
+        "name": "Move Right"
+      }
+    },
+    "select": {
+      "night_mode": {
+        "name": "Night Vision",
+        "state": {
+          "auto": "Auto",
+          "always_on": "Always On",
+          "off": "Off"
+        }
+      }
+    }
+  }
+}

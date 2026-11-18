@@ -1,0 +1,12 @@
+{
+  "domain": "chuangmi_liberator",
+  "name": "Chuangmi Liberator WebRTC",
+  "codeowners": ["@VictorCV-DAM"],
+  "config_flow": true,
+  "dependencies": ["http"],
+  "documentation": "https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/VictorCV-DAM/ha-chuangmi-liberator-webrtc/issues",
+  "requirements": ["cryptography>=3.3.2"],
+  "version": "1.0.0"
+}

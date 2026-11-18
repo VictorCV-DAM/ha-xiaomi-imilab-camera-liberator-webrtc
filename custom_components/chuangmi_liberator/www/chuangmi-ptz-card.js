@@ -34,8 +34,11 @@ const CARD_I18N = {
     record_saved: '¡Grabación guardada!',
     flip: 'Invertir',
     flip_tooltip: 'Invertir imagen 180°',
-    night: 'Modo Noche',
-    night_tooltip: 'Modo Noche / Visión Nocturna',
+    night_vision: 'Visión Nocturna',
+    night_vision_auto: 'Auto',
+    night_vision_on: 'Visión Nocturna',
+    night_vision_off: 'Desactivado',
+    night_tooltip: 'Visión Nocturna (Auto / Activada / Desactivada)',
     privacy: 'Privacidad',
     privacy_tooltip: 'Modo Privacidad (Reposo / Apagado)',
     up: 'Mover Arriba',
@@ -54,10 +57,8 @@ const CARD_I18N = {
     quality_tooltip: 'Hacer clic para alternar resolución (HD 1080p / 2K Máxima / SD 360p)',
     hide_controls: 'Ocultar controles (Cruceta PTZ y acciones)',
     show_controls: 'Desplegar controles (Cruceta PTZ y acciones)',
-    toggle_margins: 'Alternar márgenes reducidos / Vista compacta',
-    editor_show_controls: 'Mostrar controles (Cruceta PTZ y acciones)',
-    editor_compact_margins: 'Márgenes reducidos (Modo compacto borde a borde)',
-    editor_hide_header: 'Ocultar barra de título / cabecera',
+    editor_show_controls: 'Mostrar controles inferiores (Cruceta PTZ y acciones)',
+    editor_hide_header: 'Ocultar barra superior / cabecera',
     connecting: 'Conectando con la cámara...',
     buffering: 'Reanudando emisión...',
     stream_error: 'Emisión no disponible o reconectando...',
@@ -72,8 +73,11 @@ const CARD_I18N = {
     record_saved: 'Recording saved!',
     flip: 'Flip',
     flip_tooltip: 'Flip image 180°',
-    night: 'Night Mode',
-    night_tooltip: 'Night Mode / Infrared IR',
+    night_vision: 'Night Vision',
+    night_vision_auto: 'Auto',
+    night_vision_on: 'Night Vision',
+    night_vision_off: 'Off',
+    night_tooltip: 'Night Vision (Auto / On / Off)',
     privacy: 'Privacy',
     privacy_tooltip: 'Privacy Mode (Sleep / Standby)',
     up: 'Move Up',
@@ -92,10 +96,8 @@ const CARD_I18N = {
     quality_tooltip: 'Click to switch resolution (HD 1080p / 2K Ultra / SD 360p)',
     hide_controls: 'Hide controls (PTZ D-pad & actions)',
     show_controls: 'Show controls (PTZ D-pad & actions)',
-    toggle_margins: 'Toggle compact view / reduced margins',
-    editor_show_controls: 'Show PTZ movement and action controls',
-    editor_compact_margins: 'Reduced margins (Borderless / compact mode)',
-    editor_hide_header: 'Hide header / title bar',
+    editor_show_controls: 'Show bottom controls (PTZ D-pad & actions)',
+    editor_hide_header: 'Hide top bar / header',
     connecting: 'Connecting to camera...',
     buffering: 'Resuming stream...',
     stream_error: 'Stream unavailable or reconnecting...',
@@ -221,9 +223,9 @@ class ChuangmiPTZCard extends HTMLElement {
     return `chuangmi_controls_${did}`;
   }
 
-  _getMarginsStorageKey() {
+  _getHeaderStorageKey() {
     const did = this._getCamDid() || (this._config?.camera_entity || 'default');
-    return `chuangmi_margins_${did}`;
+    return `chuangmi_header_${did}`;
   }
 
   _loadPreferences() {
@@ -242,6 +244,8 @@ class ChuangmiPTZCard extends HTMLElement {
         this._controlsCollapsed = (savedControls === 'collapsed');
       } else if (this._config.show_controls !== undefined) {
         this._controlsCollapsed = !this._config.show_controls;
+      } else if (this._config.hide_controls !== undefined) {
+        this._controlsCollapsed = !!this._config.hide_controls;
       } else {
         this._controlsCollapsed = false;
       }
@@ -249,18 +253,18 @@ class ChuangmiPTZCard extends HTMLElement {
       this._controlsCollapsed = this._config.show_controls !== undefined ? !this._config.show_controls : false;
     }
 
-    // 3. Compact Margins
+    // 3. Header hidden / visible
     try {
-      const savedMargins = localStorage.getItem(this._getMarginsStorageKey());
-      if (savedMargins !== null) {
-        this._compactMargins = (savedMargins === 'compact');
-      } else if (this._config.compact_margins !== undefined) {
-        this._compactMargins = !!this._config.compact_margins;
+      const savedHeader = localStorage.getItem(this._getHeaderStorageKey());
+      if (savedHeader !== null) {
+        this._headerHidden = (savedHeader === 'hidden');
+      } else if (this._config.hide_header !== undefined) {
+        this._headerHidden = !!this._config.hide_header;
       } else {
-        this._compactMargins = false;
+        this._headerHidden = false;
       }
     } catch (_) {
-      this._compactMargins = !!this._config.compact_margins;
+      this._headerHidden = !!this._config.hide_header;
     }
 
     this._preferencesLoaded = true;
@@ -300,25 +304,18 @@ class ChuangmiPTZCard extends HTMLElement {
     }
   }
 
-  _toggleMargins() {
-    this._compactMargins = !this._compactMargins;
+  _toggleHeader() {
+    this._headerHidden = !this._headerHidden;
     try {
-      localStorage.setItem(this._getMarginsStorageKey(), this._compactMargins ? 'compact' : 'normal');
+      localStorage.setItem(this._getHeaderStorageKey(), this._headerHidden ? 'hidden' : 'visible');
     } catch (_) {}
-    this._updateMarginsVisibility();
+    this._updateHeaderVisibility();
   }
 
-  _updateMarginsVisibility() {
+  _updateHeaderVisibility() {
     const card = this.shadowRoot.querySelector('ha-card');
-    const toggleBtn = this.shadowRoot.getElementById('btnToggleMargins');
-    const i18n = getCardI18n(this._hass);
-
     if (card) {
-      card.classList.toggle('compact-margins', this._compactMargins);
-    }
-    if (toggleBtn) {
-      toggleBtn.classList.toggle('active', this._compactMargins);
-      toggleBtn.title = i18n.toggle_margins;
+      card.classList.toggle('header-hidden', this._headerHidden);
     }
   }
 
@@ -496,31 +493,39 @@ class ChuangmiPTZCard extends HTMLElement {
     }
   }
 
-  _cycleNightMode(entityId) {
+  _cycleNightVision(entityId) {
     if (!this._hass || !entityId) return;
     const stateObj = this._hass.states[entityId];
-    const current = (stateObj?.state || 'off').toLowerCase();
+    const current = String(stateObj?.state || 'auto').toLowerCase();
     const options = stateObj?.attributes?.options || [];
 
+    // 3 states: auto -> on (night vision) -> off (desactivado) -> auto
+    let target = 'on';
+    if (current === 'auto' || current === '0') {
+      target = 'on'; // Auto -> Night Vision
+    } else if (current === 'on' || current === 'always_on' || current === '1') {
+      target = 'off'; // Night Vision -> Desactivado
+    } else {
+      target = 'auto'; // Desactivado -> Auto
+    }
+
     if (options.length > 0) {
-      // Find matching option with case sensitivity preservation
-      const isCurrentlyOn = current === 'on' || current === 'always_on' || current === '2';
-      let nextOption = '';
-      if (isCurrentlyOn) {
-        // Toggle OFF
-        nextOption = options.find(o => o.toLowerCase() === 'off') || options.find(o => o.toLowerCase() === 'auto') || options[0];
-      } else {
-        // Toggle ON
-        nextOption = options.find(o => o.toLowerCase() === 'on' || o.toLowerCase() === 'always_on') || options[options.length - 1];
+      let matched = '';
+      if (target === 'auto') {
+        matched = options.find(o => o.toLowerCase() === 'auto') || options[0];
+      } else if (target === 'on') {
+        matched = options.find(o => o.toLowerCase() === 'on' || o.toLowerCase() === 'always_on') || options.find(o => o.toLowerCase().includes('on')) || options[options.length - 1];
+      } else if (target === 'off') {
+        matched = options.find(o => o.toLowerCase() === 'off') || options.find(o => o.toLowerCase().includes('off')) || options[0];
       }
-      if (nextOption) {
-        this._hass.callService('select', 'select_option', { entity_id: entityId, option: nextOption });
+      if (matched) {
+        this._hass.callService('select', 'select_option', { entity_id: entityId, option: matched });
         return;
       }
     }
 
-    const cycle = { 'auto': 'always_on', 'always_on': 'off', 'off': 'auto', 'on': 'off' };
-    const next = cycle[current] || 'auto';
+    const cycleMap = { 'auto': 'always_on', 'always_on': 'off', 'off': 'auto', 'on': 'off' };
+    const next = cycleMap[current] || 'auto';
     this._hass.callService('select', 'select_option', { entity_id: entityId, option: next });
   }
 
@@ -730,6 +735,51 @@ class ChuangmiPTZCard extends HTMLElement {
     }
   }
 
+  _applyVideoEdgeToEdge(webrtc) {
+    if (!webrtc) return;
+    const inject = () => {
+      try {
+        const sr = webrtc.shadowRoot;
+        if (sr && !sr.getElementById('chuangmi-video-fix')) {
+          const style = document.createElement('style');
+          style.id = 'chuangmi-video-fix';
+          style.textContent = `
+            ha-card {
+              border: none !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
+              background: transparent !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              width: 100% !important;
+              overflow: hidden !important;
+            }
+            .main, .stream {
+              padding: 0 !important;
+              margin: 0 !important;
+              width: 100% !important;
+              background: transparent !important;
+            }
+            video {
+              width: 100% !important;
+              height: auto !important;
+              display: block !important;
+              border-radius: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              object-fit: contain !important;
+            }
+          `;
+          sr.appendChild(style);
+        }
+      } catch (_) {}
+    };
+    inject();
+    setTimeout(inject, 60);
+    setTimeout(inject, 300);
+    setTimeout(inject, 1200);
+  }
+
   _ensureWebRTC(forceReload = false) {
     const container = this.shadowRoot.getElementById('videoContainer');
     if (!container) return;
@@ -774,11 +824,13 @@ class ChuangmiPTZCard extends HTMLElement {
         container.appendChild(webrtc);
       }
 
+      this._applyVideoEdgeToEdge(webrtc);
       this._monitorVideoElement(webrtc);
     } else {
       if (this._hass && webrtc.hass !== this._hass) {
         webrtc.hass = this._hass;
       }
+      this._applyVideoEdgeToEdge(webrtc);
       this._monitorVideoElement(webrtc);
     }
 
@@ -823,36 +875,19 @@ class ChuangmiPTZCard extends HTMLElement {
           border: 1px solid rgba(255, 255, 255, 0.08);
           transition: all 0.25s ease;
         }
-        ha-card.compact-margins {
-          border-radius: 12px;
-          border-color: rgba(255, 255, 255, 0.04);
-        }
-        ha-card.compact-margins .header {
-          padding: 8px 12px 6px 12px;
-        }
-        ha-card.compact-margins .controls-panel {
-          padding: 10px 8px 8px 8px;
-          gap: 10px;
-        }
-        ha-card.compact-margins .ptz-circle {
-          width: 154px;
-          height: 154px;
-        }
-        ha-card.compact-margins .btn-center {
-          width: 60px;
-          height: 60px;
-        }
-        ha-card.compact-margins .action-bar {
-          padding: 4px;
-          gap: 8px;
-        }
         ha-card.header-hidden .header {
           display: none !important;
+        }
+        ha-card.header-hidden .video-container {
+          border-top-left-radius: 18px;
+          border-top-right-radius: 18px;
         }
         ha-card.controls-hidden .video-container {
           border-bottom-left-radius: 18px;
           border-bottom-right-radius: 18px;
-          overflow: hidden;
+        }
+        ha-card.header-hidden.controls-hidden .video-container {
+          border-radius: 18px;
         }
         .header {
           display: flex;
@@ -1014,17 +1049,20 @@ class ChuangmiPTZCard extends HTMLElement {
         .video-container {
           position: relative;
           width: 100%;
-          min-height: 240px;
           background: #000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          overflow: hidden;
+          line-height: 0;
           transition: border-radius 0.25s ease;
         }
         .video-container webrtc-camera {
           width: 100%;
-          height: 100%;
           display: block;
+          margin: 0;
+          padding: 0;
+          --ha-card-border-radius: 0px !important;
+          --ha-card-border-width: 0px !important;
+          --ha-card-box-shadow: none !important;
+          --ha-card-background: transparent !important;
         }
         .floating-toggle-btn {
           position: absolute;
@@ -1194,10 +1232,20 @@ class ChuangmiPTZCard extends HTMLElement {
         .action-btn:active {
           transform: scale(0.94);
         }
-        .action-btn.active {
-          background: rgba(16, 185, 129, 0.12);
-          border-color: rgba(16, 185, 129, 0.35);
+        .action-btn.active, .action-btn.state-on {
+          background: rgba(16, 185, 129, 0.16);
+          border-color: rgba(16, 185, 129, 0.45);
           color: #10b981;
+        }
+        .action-btn.state-auto {
+          background: rgba(6, 182, 212, 0.12);
+          border-color: rgba(6, 182, 212, 0.35);
+          color: #06b6d4;
+        }
+        .action-btn.state-off {
+          background: rgba(255, 255, 255, 0.03);
+          border-color: rgba(255, 255, 255, 0.06);
+          color: #64748b;
         }
         .action-btn svg {
           width: 22px;
@@ -1206,11 +1254,11 @@ class ChuangmiPTZCard extends HTMLElement {
         }
       </style>
 
-      <ha-card class="${this._controlsCollapsed ? 'controls-hidden' : ''} ${this._compactMargins ? 'compact-margins' : ''} ${this._config.hide_header ? 'header-hidden' : ''}">
+      <ha-card class="${this._controlsCollapsed ? 'controls-hidden' : ''} ${this._headerHidden ? 'header-hidden' : ''}">
         <div class="header">
           <div class="header-title" id="headerTitle" title="${i18n.more_info_tooltip}">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="#10b981">
-              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
+              <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,6M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
             </svg>
             <span id="cardTitle">${title}</span>
           </div>
@@ -1220,13 +1268,6 @@ class ChuangmiPTZCard extends HTMLElement {
               <span class="badge-dot"></span>
               <span id="badgeLabel">${this._quality === '2k' ? i18n.badge_2k : (this._quality === 'hd' ? i18n.badge_hd : i18n.badge_sd)}</span>
               <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor" style="opacity: 0.8;"><path d="M7,10L12,15L17,10H7Z"/></svg>
-            </button>
-
-            <!-- Toggle Compact Margins Button -->
-            <button class="header-icon-btn ${this._compactMargins ? 'active' : ''}" id="btnToggleMargins" title="${i18n.toggle_margins}">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                <path d="M4,4H20V6H4V4M4,9H14V11H4V9M4,14H20V16H4V14M4,19H14V21H4V19Z"/>
-              </svg>
             </button>
 
             <!-- Toggle Controls Collapse/Expand Button -->
@@ -1292,10 +1333,10 @@ class ChuangmiPTZCard extends HTMLElement {
               <span>${i18n.flip}</span>
             </button>
 
-            <!-- 2. Modo Noche (Night Vision) -->
+            <!-- 2. Visión Nocturna (Night Vision con 3 estados: Auto, Night Vision, Desactivado) -->
             <button class="action-btn" id="btnNight" title="${i18n.night_tooltip}">
               <svg viewBox="0 0 24 24"><path d="M17.75,4.09L15.22,6.03L16.13,9.09L13.5,7.28L10.87,9.09L11.78,6.03L9.25,4.09L12.44,4L13.5,1L14.56,4L17.75,4.09M21.25,11L19.61,12.25L20.2,14.23L18.5,13.06L16.8,14.23L17.39,12.25L15.75,11L17.81,10.95L18.5,9L19.19,10.95L21.25,11M18.97,15.95C19.8,15.87 20.69,17.05 20.16,17.8C19.84,18.25 19.5,18.67 19.08,19.07C15.17,23 8.84,23 4.94,19.07C1.03,15.17 1.03,8.84 4.94,4.94C7.77,2.1 11.83,1.38 15.34,3.14C16.15,3.55 16.03,4.68 15.17,4.88C11.8,5.65 9.29,8.68 9.29,12.35C9.29,16.42 12.58,19.71 16.65,19.71C17.47,19.71 18.25,19.57 18.97,19.32V15.95Z"/></svg>
-              <span>${i18n.night}</span>
+              <span id="nightLabel">${i18n.night_vision}</span>
             </button>
 
             <!-- 3. Modo Privacidad (Reposo / Apagado) -->
@@ -1350,7 +1391,7 @@ class ChuangmiPTZCard extends HTMLElement {
 
     // 3 Action buttons
     this.shadowRoot.getElementById('btnFlip').onclick = () => this._callFlip(this._discoveredEntities.flip);
-    this.shadowRoot.getElementById('btnNight').onclick = () => this._cycleNightMode(this._discoveredEntities.night);
+    this.shadowRoot.getElementById('btnNight').onclick = () => this._cycleNightVision(this._discoveredEntities.night);
     this.shadowRoot.getElementById('btnSleep').onclick = () => this._callSleep(this._discoveredEntities.sleep);
 
     // Toggle controls collapse
@@ -1359,10 +1400,6 @@ class ChuangmiPTZCard extends HTMLElement {
 
     const btnFloatingToggle = this.shadowRoot.getElementById('btnFloatingToggle');
     if (btnFloatingToggle) btnFloatingToggle.onclick = () => this._toggleControls();
-
-    // Toggle compact margins
-    const btnToggleMargins = this.shadowRoot.getElementById('btnToggleMargins');
-    if (btnToggleMargins) btnToggleMargins.onclick = () => this._toggleMargins();
 
     // Interactive Quality / Resolution Selector Badge
     const badgeBtn = this.shadowRoot.getElementById('badgeQuality');
@@ -1413,12 +1450,31 @@ class ChuangmiPTZCard extends HTMLElement {
       flipBtn.classList.toggle('active', isFlipped);
     }
 
-    // 2. Modo Noche: VERDE sólo si está forzada activa ('on' / 'always_on' / '2'), GRIS si auto o apagada ('off' / 'auto')
+    // 2. Visión Nocturna con 3 estados: auto, night vision y desactivado
     const nightBtn = this.shadowRoot.getElementById('btnNight');
+    const nightLabel = this.shadowRoot.getElementById('nightLabel');
     if (nightBtn && this._discoveredEntities.night) {
       const state = String(this._hass.states[this._discoveredEntities.night]?.state || '').toLowerCase();
-      const isNightActive = (state === 'on' || state === 'always_on' || state === '2');
-      nightBtn.classList.toggle('active', isNightActive);
+      const isEs = (this._currentLang || '').startsWith('es');
+
+      nightBtn.classList.remove('state-auto', 'state-on', 'state-off', 'active');
+
+      if (state === 'on' || state === 'always_on' || state === '1') {
+        // Estado 2: Night Vision (Activada) -> VERDE
+        nightBtn.classList.add('state-on', 'active');
+        if (nightLabel) nightLabel.textContent = isEs ? 'Visión Nocturna' : 'Night Vision';
+        nightBtn.title = isEs ? 'Visión Nocturna: Activada (Clic para Desactivar)' : 'Night Vision: Active (Click to Disable)';
+      } else if (state === 'off' || state === '2') {
+        // Estado 3: Desactivado -> GRIS
+        nightBtn.classList.add('state-off');
+        if (nightLabel) nightLabel.textContent = isEs ? 'Desactivado' : 'Off';
+        nightBtn.title = isEs ? 'Visión Nocturna: Desactivada (Clic para modo Auto)' : 'Night Vision: Disabled (Click for Auto)';
+      } else {
+        // Estado 1: Auto -> AZUL/CYAN
+        nightBtn.classList.add('state-auto');
+        if (nightLabel) nightLabel.textContent = 'Auto';
+        nightBtn.title = isEs ? 'Visión Nocturna: Automático (Clic para Activar)' : 'Night Vision: Auto (Click to Enable)';
+      }
     }
 
     // 3. Privacidad: VERDE sólo si privacidad activa (cámara apagada / en reposo), GRIS si cámara encendida / transmitiendo
@@ -1587,19 +1643,15 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     `;
     container.appendChild(selectorBox);
 
-    // 3. Display and Layout Options (Collapsible controls, Compact margins, Hide header)
+    // 3. Display and Layout Options (Hide Header, Hide Controls)
     const optionsBox = document.createElement('div');
     const isEs = (this._currentLang || '').startsWith('es');
     optionsBox.innerHTML = `
-      <div style="font-weight:600; margin-bottom:8px; color:var(--primary-text-color);">${isEs ? 'Opciones de visualización y márgenes' : 'Display & Margin Options'}</div>
+      <div style="font-weight:600; margin-bottom:8px; color:var(--primary-text-color);">${isEs ? 'Opciones de visualización' : 'Display Options'}</div>
       <div style="display: flex; flex-direction: column; gap: 10px;">
         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--primary-text-color); font-size: 0.9rem;">
           <input type="checkbox" id="cfgShowControls" ${this._config.show_controls !== false ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
           <span>${i18n.editor_show_controls}</span>
-        </label>
-        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--primary-text-color); font-size: 0.9rem;">
-          <input type="checkbox" id="cfgCompactMargins" ${this._config.compact_margins === true ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
-          <span>${i18n.editor_compact_margins}</span>
         </label>
         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; color: var(--primary-text-color); font-size: 0.9rem;">
           <input type="checkbox" id="cfgHideHeader" ${this._config.hide_header === true ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
@@ -1616,7 +1668,6 @@ class ChuangmiPTZCardEditor extends HTMLElement {
       const selectedVal = entitySelect ? entitySelect.value : currentEntity;
       const selectedCam = cameras.find(c => c.value === selectedVal);
       const showControlsInput = this.querySelector('#cfgShowControls');
-      const compactMarginsInput = this.querySelector('#cfgCompactMargins');
       const hideHeaderInput = this.querySelector('#cfgHideHeader');
 
       const newConfig = {
@@ -1626,7 +1677,6 @@ class ChuangmiPTZCardEditor extends HTMLElement {
         stream_name: selectedCam ? selectedCam.stream_name : '',
         did: selectedCam ? selectedCam.did : '',
         show_controls: showControlsInput ? showControlsInput.checked : true,
-        compact_margins: compactMarginsInput ? compactMarginsInput.checked : false,
         hide_header: hideHeaderInput ? hideHeaderInput.checked : false
       };
 
@@ -1641,7 +1691,6 @@ class ChuangmiPTZCardEditor extends HTMLElement {
     titleBox.querySelector('#cfgTitle').addEventListener('input', updateConfig);
     selectorBox.querySelector('#cfgEntity').addEventListener('change', updateConfig);
     optionsBox.querySelector('#cfgShowControls').addEventListener('change', updateConfig);
-    optionsBox.querySelector('#cfgCompactMargins').addEventListener('change', updateConfig);
     optionsBox.querySelector('#cfgHideHeader').addEventListener('change', updateConfig);
 
     this.appendChild(container);
@@ -1669,7 +1718,7 @@ try {
 } catch (e) {}
 
 console.info(
-  '%c CHUANGMI-PTZ-CARD %c v1.7.1 COLLAPSIBLE CONTROLS & COMPACT MARGINS ',
+  '%c CHUANGMI-PTZ-CARD %c v1.7.2 EDGE-TO-EDGE VIDEO & 3-STATE NIGHT VISION ',
   'color: white; background: #10b981; font-weight: bold; padding: 2px 6px; border-radius: 4px;',
   'color: #10b981; background: #18181b; font-weight: bold; padding: 2px 6px; border-radius: 4px;'
 );

@@ -186,3 +186,31 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
     return unload_ok
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    device_entry,
+) -> bool:
+    """Allow user to cleanly delete a camera device from HA UI without leaving orphan entities."""
+    device_dids = {
+        identifier[1]
+        for identifier in device_entry.identifiers
+        if identifier[0] == DOMAIN
+    }
+    if not device_dids:
+        return True
+
+    cameras = config_entry.data.get(CONF_CAMERAS, [])
+    new_cameras = [
+        c for c in cameras
+        if str(c.get(CONF_CAMERA_DID)) not in device_dids
+    ]
+    if len(new_cameras) != len(cameras):
+        new_data = dict(config_entry.data)
+        new_data[CONF_CAMERAS] = new_cameras
+        hass.config_entries.async_update_entry(config_entry, data=new_data)
+        _LOGGER.info("Device %s removed from config entry cleanly.", device_dids)
+
+    return True
